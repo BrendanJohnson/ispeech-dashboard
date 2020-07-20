@@ -7,7 +7,7 @@
       <div class="logo">
         <a href="#" class="simple-text logo__container">
             <div class="logo-img">
-                <img src="img/vue-logo.png" alt="">
+                <img src="img/ispeech-logo-light-transparent.png" alt="">
             </div>
           {{title}}
         </a>

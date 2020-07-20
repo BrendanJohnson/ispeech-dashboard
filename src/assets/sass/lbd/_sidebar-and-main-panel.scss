@@ -54,7 +54,6 @@ body > .navbar-collapse{
             text-transform: uppercase;
             padding: $padding-small-vertical $padding-zero;
             font-size: $font-size-large;
-            color: $white-color;
             text-align: center;
             font-weight: $font-weight-normal;
             line-height: 30px;
@@ -69,11 +68,10 @@ body > .navbar-collapse{
               height: 40px;
               margin-left: 0px;
               margin-right: 10px;
-              background: white;
               border-radius: 40px;
 
               img{
-                max-width: 21px;
+                max-width: 51px;
               }
             }
           }
@@ -200,14 +198,13 @@ body > .navbar-collapse{
         }
 
         .simple-text{
-            text-transform: uppercase;
+            text-transform: none;
             padding: $padding-small-vertical $padding-zero;
             display: flex;
             align-items: center;
             font-size: $font-size-large;
-            color: $white-color;
             text-align: center;
-            font-weight: $font-weight-normal;
+            font-weight: $font-weight-semi;
             line-height: 30px;
         }
     }
