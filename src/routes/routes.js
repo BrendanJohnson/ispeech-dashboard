@@ -29,8 +29,8 @@ const routes = [
         component: Overview
       },
       {
-        path: 'user',
-        name: 'User',
+        path: 'sessions',
+        name: 'Sessions',
         component: UserProfile
       },
       {
