@@ -31,7 +31,7 @@ module.exports = {
     }
   },
   pwa: {
-    name: 'Vue Light Bootstrap Dashboard',
+    name: 'iSpeech Dashboard',
     themeColor: '#344675',
     msTileColor: '#344675',
     appleMobileWebAppCapable: 'yes',
