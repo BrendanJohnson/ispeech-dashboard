@@ -10,6 +10,7 @@ import SideBar from './components/SidebarPlugin'
 
 // asset imports
 import 'bootstrap/dist/css/bootstrap.css'
+import 'bootstrap-vue/dist/bootstrap-vue.css'
 import './assets/sass/light-bootstrap-dashboard.scss'
 import './assets/css/demo.css'
 

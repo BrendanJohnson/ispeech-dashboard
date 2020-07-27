@@ -20,8 +20,11 @@
     </button>
   </div>
     </div>
-    <div id="annotations" class="table-responsive">
-      <!-- Here be transcript -->
+  <div>
+    <b-table ref="annotationsTable" primary-key="alignable_id" sticky-header striped hover :items="items" :fields="fields" @row-clicked="clickRow"></b-table>
+  </div>
+    <div id="annotations" class="table-responsive" style="display:none;">
+      <!-- Hidden as we want to use our own table -->
     </div>
   </card>
 </template>
@@ -39,6 +42,35 @@
     data () {
       return {
         wavesurfer: null,
+        fields: [
+          {
+            key: 'start_time',
+            sortable: true
+          },
+          {
+            key: 'end_time',
+            sortable: false
+          },
+          {
+            key: 'duration',
+            sortable: true,
+            formatter: value => {
+              var roundedTime = Math.round((value + Number.EPSILON) * 100) / 100;
+              return roundedTime + 's';
+            }
+          },
+          {
+            key: 'speaker',
+            sortable: true
+          },
+          {
+            key: 'transcript',
+            label: 'Transcript',
+            sortable: true
+          }
+        ],
+        items: [
+        ],
         user: {
           company: 'Light dashboard',
           username: 'michael23',
@@ -87,7 +119,7 @@
                     cache: "default",
                     mode: "cors",
                     method: "GET",
-                    credentials: "include",
+                    credentials: "omit",
                     headers: [
                       { key: "cache-control", value: "no-cache" },
                       { key: "pragma", value: "no-cache" }
@@ -95,56 +127,78 @@
                   }
           });
         // Proxy actually points to https://storage.googleapis.com/ispeech-bucket/raw_audio
-          this.wavesurfer.load('/audio/putonghua_030120_slice.mp3');
+        //  this.wavesurfer.load('/audio/putonghua_030120_slice.mp3');
+          this.wavesurfer.load('https://storage.googleapis.com/ispeech-bucket/raw_audio/putonghua_030120_slice.mp3');
 
           var wavesurfer = this.wavesurfer;
+
           wavesurfer.elan.on('select', function (start, end) {
             wavesurfer.backend.play(start, end);
           });
 
-          var prevAnnotation, prevRow, region;
-          var onProgress = function (time) {
-                  var annotation = wavesurfer.elan.getRenderedAnnotation(time);
-                  if (prevAnnotation != annotation) {
-                      prevAnnotation = annotation;
-                      region && region.remove();
-                      region = null;
-
-                      if (annotation) {
-                          // Highlight annotation table row
-                          var row = wavesurfer.elan.getAnnotationNode(annotation);
-                          prevRow && prevRow.classList.remove('table-success');
-                          prevRow = row;
-                          row.classList.add('table-success');
-                          var before = row.previousSibling;
-                          if (before) {
-                              wavesurfer.elan.container.scrollTop = before.offsetTop;
-                          }
-
-                          // Region
-                          region = wavesurfer.addRegion({
-                              start: annotation.start,
-                              end: annotation.end,
-                              resize: false,
-                              drag: false,
-                              color: 'rgba(223, 240, 216, 0.7)'
-                          });
+          var elanReadyFactory = function(wavesurfer, items) {
+            return function() {
+              for (var i = 0; i <= wavesurfer.elan.renderedAlignable.length; i++) {
+                  var region = wavesurfer.elan.renderedAlignable[i]
+                  if (region) {
+                    var alignable_id = region.id;
+                    wavesurfer.addRegion({
+                                  start: region.start,
+                                  end: region.end,
+                                  resize: false,
+                                  drag: false,
+                                  color: (region.value == 'adult') ? 'rgba(29, 200, 234, 0.3)' : 'rgba(234, 29, 200, 0.3)'
+                    });
+                    var transcript_data = wavesurfer.elan.data.tiers.map(function(tier) {
+                      var matchingAnnotations = [];
+                      if (tier.annotations) {
+                         matchingAnnotations = tier.annotations.filter(function(annotation) {
+                            return annotation.ref == alignable_id && (annotation.id.indexOf("TRANSCRIPT") > -1);
+                         });
                       }
+                    
+                      return matchingAnnotations.filter(function(annotation) {
+                        return annotation.value;
+                      }).map(function(annotation) {
+                        return annotation.value;
+                      });
+                    });
+
+                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, alignable_id: alignable_id, speaker: region.value, isActive: true})
                   }
+              }
+            };
           };
 
-          var onElanReady = function() {
-            for (var i = 0; i <= wavesurfer.elan.renderedAlignable.length; i++) {
-                var region = wavesurfer.elan.renderedAlignable[i]
-                if (region) {
-                  wavesurfer.addRegion({
-                                start: region.start,
-                                end: region.end,
-                                resize: false,
-                                drag: false,
-                                color: (region.value == 'adult') ? 'rgba(29, 200, 234, 0.3)' : 'rgba(234, 29, 200, 0.3)'
+          var onProgressFactory = function(rowFn, scrollFn) {
+            var prevAnnotation, prevRow, region;
+            return function(time) {
+              var annotation = wavesurfer.elan.getRenderedAnnotation(time);
+              if (prevAnnotation != annotation) {
+                prevAnnotation = annotation;
+                region && region.remove();
+                region = null;
+
+                if (annotation) {
+                  var row = rowFn(annotation.id);
+                  prevRow && prevRow.classList.remove('table-success');
+                  prevRow = row;
+                  row.classList.add('table-success');
+                  var before = row.previousSibling;
+                  var after = row.nextSibling;
+                  if (after && after.dataset) {
+                    scrollFn(after.dataset.pk);
+                  }
+                  // Region
+                  region = wavesurfer.addRegion({
+                      start: annotation.start,
+                      end: annotation.end,
+                      resize: false,
+                      drag: false,
+                      color: 'rgba(223, 240, 216, 0.7)'
                   });
                 }
+              }      
             }
           }
 
@@ -152,8 +206,8 @@
             wavesurfer.play(region.start)
           }
 
-          this.wavesurfer.on('audioprocess', onProgress);
-          this.wavesurfer.elan.on('ready', onElanReady);
+          this.wavesurfer.on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
+          this.wavesurfer.elan.on('ready', elanReadyFactory(wavesurfer, this.items));
           this.wavesurfer.on('region-click', onRegionClick);
 
         })
@@ -163,10 +217,26 @@
         alert('Your data: ' + JSON.stringify(this.user))
       },
       playMusic() {
-      //"播放/暂停"按钮的单击触发事件，暂停的话单击则播放，正在播放的话单击则暂停播放
-      this.wavesurfer.playPause.bind(this.wavesurfer)()
+        this.wavesurfer.playPause.bind(this.wavesurfer)()
+      },
+      clickRow(row) {
+        console.log('clicked')
+        console.log(row)
+        this.wavesurfer.play(row.start_time)
 
-    }
+      },
+      getRow(key) {
+        const tbody = this.$refs.annotationsTable.$el.querySelector('tbody')
+        const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
+        return row;
+      },
+      scrollToRow(key) {
+        const tbody = this.$refs.annotationsTable.$el.querySelector('tbody')
+        const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
+        row.scrollIntoViewIfNeeded(false)
+       // row.scrollIntoView()
+      }
+
     }
   }
 
