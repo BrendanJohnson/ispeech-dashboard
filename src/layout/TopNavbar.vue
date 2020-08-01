@@ -24,11 +24,11 @@
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
             <a class="nav-link" href="#">
-              Account
+              Account: {{user.data.displayName}}
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="#" class="nav-link" @click.prevent="signOut">
               Log out
             </a>
           </li>
@@ -38,12 +38,18 @@
   </nav>
 </template>
 <script>
+  import { mapGetters } from "vuex";
+  import firebase from "firebase";
+
   export default {
     computed: {
       routeName () {
         const {name} = this.$route
         return this.capitalizeFirstLetter(name)
-      }
+      },
+      ...mapGetters({
+        user: "user"
+      })
     },
     data () {
       return {
@@ -65,7 +71,17 @@
       },
       hideSidebar () {
         this.$sidebar.displaySidebar(false)
-      }
+      },
+      signOut() {
+        firebase
+          .auth()
+          .signOut()
+          .then(() => {
+            this.$router.replace({
+              name: "home"
+            });
+          });
+       }
     }
   }
 

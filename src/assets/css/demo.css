@@ -1,4 +1,4 @@
-.tim-row {
+v.tim-row {
     margin-bottom: 20px;
 }
 
@@ -881,4 +881,21 @@ table.wavesurfer-annotations
 .controls {
     padding: 30px 0 15px;
     text-align: center;
+}
+.hide-border {
+    border: 0;
+}
+.hide-border .popover-body {
+    padding: 3px;
+    width: 759px;
+    background: #628ff9;
+}
+
+.ct-chart-utterances .ct-series-a .ct-bar {
+    stroke: rgba(234, 29, 200, 0.3);
+}
+
+.ct-chart-utterances .ct-series-b .ct-bar {
+    stroke: #1DC8EA; 
+
 }

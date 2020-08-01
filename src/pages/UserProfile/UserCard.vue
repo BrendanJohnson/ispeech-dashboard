@@ -5,7 +5,7 @@
       <a href="#">
         <img class="avatar border-gray" src="img/faces/face-0.jpg" alt="..."/>
 
-        <h4 class="title">Child 1<br />
+        <h4 class="title">Siu Ming<br />
           <small>Age: 3 years, 2 months</small>
         </h4>
       </a>
@@ -14,11 +14,6 @@
       "我想請你搵返啲嘢食" <br>
       "他這個阿姨告訴granny和戴白帽子的叔叔"
     </p>
-    <div slot="footer" class="text-center d-flex justify-content-center">
-      <button href="#" class="btn btn-simple"><i class="fa fa-facebook-square"></i></button>
-      <button href="#" class="btn btn-simple"><i class="fa fa-twitter"></i></button>
-      <button href="#" class="btn btn-simple"><i class="fa fa-google-plus-square"></i></button>
-    </div>
   </card>
 </template>
 <script>

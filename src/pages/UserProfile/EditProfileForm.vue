@@ -1,35 +1,64 @@
 <template>
-  <card>
-    <h4 slot="header" class="card-title">
-     Session 1: 9 July 2019
-    </h4>
-    <div id="waveform" ref="waveform">
-      <!-- Here be the waveform -->
-    </div>
-    <div id="wave-timeline" ref="wave-timeline">
-      <!--时间轴 -->
-    </div>
-    <div>
+  <div v-if="speechSessions.length">
+    <card v-for="(session, i) in speechSessions" :key="session.sessionId">
+      <h4 slot="header" class="card-title">
+        Session {{session.createdOn | formatDate}}
+      </h4>
+      <div id="waveform" ref="waveform">
+          <!-- Here be the waveform -->
+        </div>
+        <div id="wave-timeline" ref="wave-timeline">
+        </div>
+        <div>
+          <hr/>
+          <button class="btn btn-primary" @click="playMusic(i)">
+            <i class="glyphicon glyphicon-play"></i>
+            Play
+            /
+            <i class="glyphicon glyphicon-pause"></i>
+            Pause
+          </button>
+      </div>
+      <div id="annotations-table-container">
+        <b-table ref="annotationsTable" primary-key="alignable_id" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, i)">
+            <template v-slot:cell(show_details)="row">
+                
+              <b-button :id="`popover-reactive-${row.index}`" variant="primary" ref="button">
+                Details
+              </b-button>
 
-          <button class="btn btn-primary" @click="playMusic">
-      <i class="glyphicon glyphicon-play"></i>
-      Play
-      /
-      <i class="glyphicon glyphicon-pause"></i>
-      Pause
-    </button>
-  </div>
-    </div>
-  <div>
-    <b-table ref="annotationsTable" primary-key="alignable_id" sticky-header striped hover :items="items" :fields="fields" @row-clicked="clickRow"></b-table>
-  </div>
+              <b-popover
+                custom-class="hide-border"
+                boundary="viewport"
+                container="annotations-table-container"
+                :target="`popover-reactive-${row.index}`"
+                triggers="click"
+                placement="right"
+                ref="popover"
+              >
+                <img src="https://storage.googleapis.com/ispeech-bucket/EAF/trees/better_intelligibility_77.png" alt="">
+              </b-popover>
+            </template>
+        </b-table>
+      </div>
+
     <div id="annotations" class="table-responsive" style="display:none;">
       <!-- Hidden as we want to use our own table -->
     </div>
-  </card>
+    </card>
+  </div>
+  <div v-else>
+    <p class="no-results">There are currently no sessions</p>
+    <form @submit.prevent>
+      <button  class="btn btn-primary"  @click="createSession()" >Create Session</button>
+    </form>
+  </div>
 </template>
 <script>
   import Card from 'src/components/Cards/Card.vue'
+  import { mapState } from "vuex";
+  import moment from 'moment'
+  import store from "../../store"
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
@@ -41,8 +70,13 @@
     },
     data () {
       return {
-        wavesurfer: null,
+        show: false,
+        wavesurfers: [],
         fields: [
+          {
+            key: 'show_details',
+            label: ''
+          },
           {
             key: 'start_time',
             sortable: true
@@ -86,9 +120,39 @@
       }
     },
     mounted() {
-    this.$nextTick(() => {
-          this.wavesurfer = WaveSurfer.create({
-            container: this.$refs.waveform,
+      if (this.speechSessions.length) {
+        this.speechSessions.forEach((session, i) => this.renderWavesurfer(i))
+      }
+    },
+    computed: {
+      ...mapState(['speechSessions'])
+    },
+    watch: {
+      immediate: true,
+      speechSessions(sessions) {
+        if (sessions.length) {
+          sessions.forEach((session, i) => this.renderWavesurfer(i))
+          
+        }
+
+      }
+    },
+    filters: {
+      formatDate(val) {
+        if (!val) { return '-' }
+        
+        let date = val.toDate()
+        return moment(date).format('MMMM Do YYYY, h:mm a')
+      }
+    },
+    methods: {
+      createSession() {
+        store.dispatch('createSpeechSession', { content: "test" })
+      },
+      renderWavesurfer(speechSession) {
+        this.$nextTick(() => {
+          this.wavesurfers[speechSession] = WaveSurfer.create({
+            container: this.$refs.waveform[speechSession],
             waveColor: '#409EFF',
             progressColor: 'blue',
             minPxPerSec: 10, // for scrolling
@@ -108,7 +172,9 @@
 
               Elan.create({
                   container: '#annotations',
-                  url: 'https://storage.googleapis.com/ispeech-bucket/EAF/manifest.eaf.xml', 
+                  url: 'https://storage.googleapis.com/ispeech-bucket/EAF/better_intelligibility_manifest.eaf.xml',
+
+                  //url: 'https://storage.googleapis.com/ispeech-bucket/EAF/manifest.eaf.xml', 
                   tiers: {
                       "Speaker": true,
                       "Transcript": true
@@ -127,10 +193,10 @@
                   }
           });
         // Proxy actually points to https://storage.googleapis.com/ispeech-bucket/raw_audio
-        //  this.wavesurfer.load('/audio/putonghua_030120_slice.mp3');
-          this.wavesurfer.load('https://storage.googleapis.com/ispeech-bucket/raw_audio/putonghua_030120_slice.mp3');
+        //  this.wavesurfers[speechSession].load('/audio/putonghua_030120_slice.mp3');
+          this.wavesurfers[speechSession].load('https://storage.googleapis.com/ispeech-bucket/raw_audio/better_intelligibility.mp3');
 
-          var wavesurfer = this.wavesurfer;
+          var wavesurfer = this.wavesurfers[speechSession];
 
           wavesurfer.elan.on('select', function (start, end) {
             wavesurfer.backend.play(start, end);
@@ -180,14 +246,14 @@
                 region = null;
 
                 if (annotation) {
-                  var row = rowFn(annotation.id);
+                  var row = rowFn(annotation.id, speechSession);
                   prevRow && prevRow.classList.remove('table-success');
                   prevRow = row;
                   row.classList.add('table-success');
                   var before = row.previousSibling;
                   var after = row.nextSibling;
                   if (after && after.dataset) {
-                    scrollFn(after.dataset.pk);
+                    scrollFn(after.dataset.pk, speechSession);
                   }
                   // Region
                   region = wavesurfer.addRegion({
@@ -206,32 +272,31 @@
             wavesurfer.play(region.start)
           }
 
-          this.wavesurfer.on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
-          this.wavesurfer.elan.on('ready', elanReadyFactory(wavesurfer, this.items));
-          this.wavesurfer.on('region-click', onRegionClick);
+          this.wavesurfers[speechSession].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
+          this.wavesurfers[speechSession].elan.on('ready', elanReadyFactory(wavesurfer, this.items));
+          this.wavesurfers[speechSession].on('region-click', onRegionClick);
 
         })
-    },
-    methods: {
+
+
+      },
       updateProfile () {
         alert('Your data: ' + JSON.stringify(this.user))
       },
-      playMusic() {
-        this.wavesurfer.playPause.bind(this.wavesurfer)()
+      playMusic(speechSession) {
+        console.log('play fpr' + speechSession)
+        this.wavesurfers[speechSession].playPause.bind(this.wavesurfers[speechSession])()
       },
-      clickRow(row) {
-        console.log('clicked')
-        console.log(row)
-        this.wavesurfer.play(row.start_time)
-
+      clickRow(row, speechSession) {
+        this.wavesurfers[speechSession].play(row.start_time)
       },
-      getRow(key) {
-        const tbody = this.$refs.annotationsTable.$el.querySelector('tbody')
+      getRow(key, tableId) {
+        const tbody = this.$refs.annotationsTable[tableId].$el.querySelector('tbody')
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         return row;
       },
-      scrollToRow(key) {
-        const tbody = this.$refs.annotationsTable.$el.querySelector('tbody')
+      scrollToRow(key, tableId) {
+        const tbody = this.$refs.annotationsTable[tableId].$el.querySelector('tbody')
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         row.scrollIntoViewIfNeeded(false)
        // row.scrollIntoView()
