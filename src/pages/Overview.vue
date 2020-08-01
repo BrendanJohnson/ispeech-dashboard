@@ -8,11 +8,13 @@
               <i class="nc-icon nc-chart text-warning"></i>
             </div>
             <div slot="content">
-              <p class="card-category">Capacity</p>
-              <h4 class="card-title">105GB</h4>
+              <p class="card-category">Sessions</p>
+              <h4 class="card-title">4</h4>
             </div>
             <div slot="footer">
-              <i class="fa fa-refresh"></i>Updated now
+               <div class="stats">
+                <i class="fa fa-history"></i> Last session 27 July 2020
+              </div>
             </div>
           </stats-card>
         </div>
@@ -20,44 +22,32 @@
         <div class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-success">
-              <i class="nc-icon nc-light-3 text-success"></i>
+              <i class="nc-icon nc-headphones-2 text-success"></i>
             </div>
             <div slot="content">
-              <p class="card-category">Revenue</p>
-              <h4 class="card-title">$1,345</h4>
+              <p class="card-category">Total child speech time</p>
+              <h4 class="card-title">1h 14m</h4>
             </div>
             <div slot="footer">
-              <i class="fa fa-calendar-o"></i>Last day
+              <div class="stats">
+                <i class="fa fa-history"></i> Last updated 2 days ago 
+              </div>
             </div>
           </stats-card>
         </div>
-
         <div class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-danger">
               <i class="nc-icon nc-vector text-danger"></i>
             </div>
             <div slot="content">
-              <p class="card-category">Errors</p>
-              <h4 class="card-title">23</h4>
+              <p class="card-category">Total words detected</p>
+              <h4 class="card-title">1,680</h4>
             </div>
             <div slot="footer">
-              <i class="fa fa-clock-o"></i>Last day
-            </div>
-          </stats-card>
-        </div>
-
-        <div class="col-xl-3 col-md-6">
-          <stats-card>
-            <div slot="header" class="icon-info">
-              <i class="nc-icon nc-favourite-28 text-primary"></i>
-            </div>
-            <div slot="content">
-              <p class="card-category">Followers</p>
-              <h4 class="card-title">+45</h4>
-            </div>
-            <div slot="footer">
-              <i class="fa fa-refresh"></i>Updated now
+              <div class="stats">
+                <i class="fa fa-history"></i> Last updated 2 days ago 
+              </div>
             </div>
           </stats-card>
         </div>
@@ -69,14 +59,15 @@
                       :chart-options="lineChart.options"
                       :responsive-options="lineChart.responsiveOptions">
             <template slot="header">
-              <h4 class="card-title">Users Behavior</h4>
-              <p class="card-category">24 Hours performance</p>
+              <h4 class="card-title">Child/Adult Ratio</h4>
+              <p class="card-category">Percentage of time the child speaks in the session</p>
+               <hr>
+              
             </template>
             <template slot="footer">
               <div class="legend">
-                <i class="fa fa-circle text-info"></i> Open
-                <i class="fa fa-circle text-danger"></i> Click
-                <i class="fa fa-circle text-warning"></i> Click Second Time
+                <i class="fa fa-circle text-info"></i> % Speech time
+                <i class="fa fa-circle text-danger"></i> % Turns
               </div>
               <hr>
               <div class="stats">
@@ -85,57 +76,10 @@
             </template>
           </chart-card>
         </div>
-
-        <div class="col-md-4">
-          <chart-card :chart-data="pieChart.data" chart-type="Pie">
-            <template slot="header">
-              <h4 class="card-title">Email Statistics</h4>
-              <p class="card-category">Last Campaign Performance</p>
-            </template>
-            <template slot="footer">
-              <div class="legend">
-                <i class="fa fa-circle text-info"></i> Open
-                <i class="fa fa-circle text-danger"></i> Bounce
-                <i class="fa fa-circle text-warning"></i> Unsubscribe
-              </div>
-              <hr>
-              <div class="stats">
-                <i class="fa fa-clock-o"></i> Campaign sent 2 days ago
-              </div>
-            </template>
-          </chart-card>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-6">
-          <chart-card
-            :chart-data="barChart.data"
-            :chart-options="barChart.options"
-            :chart-responsive-options="barChart.responsiveOptions"
-            chart-type="Bar">
-            <template slot="header">
-              <h4 class="card-title">2014 Sales</h4>
-              <p class="card-category">All products including Taxes</p>
-            </template>
-            <template slot="footer">
-              <div class="legend">
-                <i class="fa fa-circle text-info"></i> Tesla Model S
-                <i class="fa fa-circle text-danger"></i> BMW 5 Series
-              </div>
-              <hr>
-              <div class="stats">
-                <i class="fa fa-check"></i> Data information certified
-              </div>
-            </template>
-          </chart-card>
-        </div>
-
-        <div class="col-md-6">
+                <div class="col-md-4">
           <card>
             <template slot="header">
-              <h5 class="title">Tasks</h5>
-              <p class="category">Backend development</p>
+               <h4 class="card-title">Recommendations</h4>
             </template>
             <l-table :data="tableData.data"
                      :columns="tableData.columns">
@@ -156,14 +100,45 @@
                 </td>
               </template>
             </l-table>
-            <div class="footer">
-              <hr>
-              <div class="stats">
-                <i class="fa fa-history"></i> Updated 3 minutes ago
-              </div>
-            </div>
+
           </card>
 
+        </div>
+      </div>
+
+      <div class="row">
+
+        <div class="col-md-8">
+          <chart-card
+            :chart-data="barChart.data"
+            :chart-options="barChart.options"
+            :chart-responsive-options="barChart.responsiveOptions"
+            chart-type="Bar">
+            <template slot="header">
+              <h4 class="card-title">No. of Utterances</h4>
+              <p class="card-category">All sessions to date</p>
+              <hr>
+              <b-badge pill variant="primary" style="margin: 2px; background-color: rgba(234, 29, 200, 0.3);">Child</b-badge>
+
+                <b-badge pill variant="secondary"  style="margin: 2px; background-color: #1DC8EA;">Adult</b-badge>
+            </template>
+          </chart-card>
+
+        </div>
+
+        <div class="col-md-4">
+          <chart-card :chart-data="pieChart.data" chart-type="Pie">
+            <template slot="header">
+              <h4 class="card-title">Langauge Spoken</h4>
+              <p class="card-category">Over all sessions (by time)</p>
+            </template>
+            <template slot="footer">
+              <hr>
+              <div class="stats">
+                <i class="fa fa-history"></i> Last updated 2 days ago
+              </div>
+            </template>
+          </chart-card>
         </div>
       </div>
     </div>
@@ -186,22 +161,21 @@
         deleteTooltip: 'Remove',
         pieChart: {
           data: {
-            labels: ['40%', '20%', '40%'],
-            series: [40, 20, 40]
+            labels: ['English 27%','Mandarin 32%', 'Cantonese 41%' ],
+            series: [27, 32, 41]
           }
         },
         lineChart: {
           data: {
-            labels: ['9:00AM', '12:00AM', '3:00PM', '6:00PM', '9:00PM', '12:00PM', '3:00AM', '6:00AM'],
+            labels: ['29/06/2020', '02/07/2020', '22/07/2020', '27/07/2020'],
             series: [
-              [287, 385, 490, 492, 554, 586, 698, 695],
-              [67, 152, 143, 240, 287, 335, 435, 437],
-              [23, 113, 67, 108, 190, 239, 307, 308]
+              [43, 42, 32, 42],
+              [33, 49, 48, 51]
             ]
           },
           options: {
             low: 0,
-            high: 800,
+            high: 70,
             showArea: false,
             height: '245px',
             axisX: {
@@ -209,11 +183,17 @@
             },
             lineSmooth: true,
             showLine: true,
+            showLabel: true,
             showPoint: true,
             fullWidth: true,
             chartPadding: {
-              right: 50
-            }
+              right: 35
+            },
+             axisX: {
+              labelOffset: {
+                x: -50
+              }
+             }
           },
           responsiveOptions: [
             ['screen and (max-width: 640px)', {
@@ -227,17 +207,23 @@
         },
         barChart: {
           data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            labels: ['29/06/2020', '02/07/2020', '22/07/2020', '27/07/2020'],
             series: [
-              [542, 443, 320, 780, 553, 453, 326, 434, 568, 610, 756, 895],
-              [412, 243, 280, 580, 453, 353, 300, 364, 368, 410, 636, 695]
+              [42, 50, 20, 58],
+              [50, 59, 42, 72]
             ]
           },
           options: {
+            classNames: {
+              chart: 'ct-chart-utterances'
+            },
             seriesBarDistance: 10,
             axisX: {
-              showGrid: false
-            },
+             showGrid: false,
+              labelOffset: {
+                x: 30
+              }
+             },
             height: '245px'
           },
           responsiveOptions: [
@@ -253,15 +239,12 @@
         },
         tableData: {
           data: [
-            {title: 'Sign contract for "What are conference organizers afraid of?"', checked: false},
-            {title: 'Lines From Great Russian Literature? Or E-mails From My Boss?', checked: true},
+            {title: 'Practice speaking in group class', checked: false},
+            {title: 'More time spent reading stories', checked: false},
             {
-              title: 'Flooded: One year later, assessing what was lost and what was found when a ravaging rain swept through metro Detroit',
-              checked: true
-            },
-            {title: 'Create 4 Invisible User Experiences you Never Knew About', checked: false},
-            {title: 'Read "Following makes Medium better"', checked: false},
-            {title: 'Unfollow 5 enemies from twitter', checked: false}
+              title: 'Another suggestion: tailored based on the analysis of the speaking patterns',
+              checked: false
+            }
           ]
         }
       }
