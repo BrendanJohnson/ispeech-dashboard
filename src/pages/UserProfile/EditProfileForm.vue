@@ -11,16 +11,29 @@
         </div>
         <div>
           <hr/>
-          <button class="btn btn-primary" @click="playMusic(session.sessionId)">
-            <i class="glyphicon glyphicon-play"></i>
-            Play
-            /
-            <i class="glyphicon glyphicon-pause"></i>
-            Pause
-          </button>
+          <div class="row">
+            <div class="col-6">
+              <button class="btn btn-primary" @click="playMusic(session.sessionId)">
+              <i class="glyphicon glyphicon-play"></i>
+              Play
+              /
+              <i class="glyphicon glyphicon-pause"></i>
+              Pause
+              </button>
+
+            </div>
+            <div class="col-6">
+              <b-form-input v-model="annotationsFilter"  placeholder="Type to Search"></b-form-input>
+            </div>
+        
+          </div>
+
       </div>
       <div id="annotations-table-container">
-        <b-table :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
+        <div class="justify-content-center row">
+
+        </div>
+        <b-table :filter="annotationsFilter" :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
             <template v-slot:cell(show_details)="row">
               <b-button :id="`popover-reactive-${row.index}`" variant="primary" ref="button">
                 Details
@@ -77,6 +90,7 @@
     data () {
       return {
         show: false,
+        annotationsFilter: '',
         wavesurfers: [],
         fields: [
           {
@@ -175,10 +189,12 @@
         store.dispatch('createSpeechSession', { content: "test" })
       },
       renderWavesurfer(session) {
+
         this.$nextTick(() => {
           var container = this.$refs.waveform.filter(item => {
             return item.id == 'waveform-session-' + session.sessionId 
           })[0];
+
           this.wavesurfers[session.sessionId] = WaveSurfer.create({
             container: container,
             waveColor: '#409EFF',
@@ -257,6 +273,12 @@
                         return annotation.value;
                       });
                     });
+
+                    if(!session.annotations[alignable_id]) {
+                      let annotation = { annotationId: alignable_id, transcript: transcript_data[2][0] }
+                      store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
+                    }
+
 
                     items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: region.value, isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
                   }
