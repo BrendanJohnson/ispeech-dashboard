@@ -5,22 +5,28 @@
       <a href="#">
         <img class="avatar border-gray" src="img/faces/face-0.jpg" alt="..."/>
 
-        <h4 class="title">Siu Ming<br />
-          <small>Age: 3 years, 2 months</small>
+        <h4 class="title">{{children[0].name}}<br />
+          <small>Age: {{children[0].age_years}} years, {{children[0].age_months}} months</small>
         </h4>
       </a>
     </div>
-    <p class="description text-center"> "The Queen has no heart" <br>
-      "我想請你搵返啲嘢食" <br>
-      "他這個阿姨告訴granny和戴白帽子的叔叔"
+    <p class="description text-center" >
+      <span v-for="(quote, i) in children[0].quotes">"{{quote}}"
+      <br></span>
     </p>
   </card>
 </template>
 <script>
   import Card from 'src/components/Cards/Card.vue'
+  import { mapState } from 'vuex'
+  import store from '../../store'
+
   export default {
     components: {
       Card
+    },
+    computed: {
+      ...mapState(['children'])
     },
     data () {
       return {

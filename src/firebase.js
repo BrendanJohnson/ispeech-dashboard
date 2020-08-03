@@ -18,6 +18,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 // Firestore collections
 const db = firebase.firestore();
+const childrenCollection = db.collection('children')
 const speechSessionsCollection = db.collection('speech_sessions')
 // Firebase auth
 const auth = firebase.auth().onAuthStateChanged(user => {
@@ -27,5 +28,6 @@ const auth = firebase.auth().onAuthStateChanged(user => {
 export {
 	auth,
 	db,
+    childrenCollection,
 	speechSessionsCollection
 }
