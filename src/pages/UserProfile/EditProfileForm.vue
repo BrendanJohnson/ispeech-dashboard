@@ -4,14 +4,14 @@
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
       </h4>
-      <div id="waveform" ref="waveform">
+      <div :id="'waveform-session-' + session.sessionId" ref="waveform">
           <!-- Here be the waveform -->
         </div>
         <div id="wave-timeline" ref="wave-timeline">
         </div>
         <div>
           <hr/>
-          <button class="btn btn-primary" @click="playMusic(i)">
+          <button class="btn btn-primary" @click="playMusic(session.sessionId)">
             <i class="glyphicon glyphicon-play"></i>
             Play
             /
@@ -20,13 +20,11 @@
           </button>
       </div>
       <div id="annotations-table-container">
-        <b-table ref="annotationsTable" primary-key="alignable_id" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, i)">
+        <b-table :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
             <template v-slot:cell(show_details)="row">
-                
               <b-button :id="`popover-reactive-${row.index}`" variant="primary" ref="button">
                 Details
               </b-button>
-
               <b-popover
                 custom-class="hide-border"
                 boundary="viewport"
@@ -39,9 +37,14 @@
                 <img src="https://storage.googleapis.com/ispeech-bucket/EAF/trees/better_intelligibility_77.png" alt="">
               </b-popover>
             </template>
+            <template v-slot:cell(star)="row">
+                <div @click="toggleStar($event, row, session.sessionId)" class="mb-0">
+                  <b-icon-star-fill v-if="row.item.starred" scale="1" variant="primary"></b-icon-star-fill>
+                  <b-icon-star v-else scale="1" variant="primary"></b-icon-star>
+                </div>
+            </template>
         </b-table>
       </div>
-
     <div id="annotations" class="table-responsive" style="display:none;">
       <!-- Hidden as we want to use our own table -->
     </div>
@@ -55,6 +58,7 @@
   </div>
 </template>
 <script>
+  import { BIcon, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from "vuex";
   import moment from 'moment'
@@ -66,6 +70,8 @@
 
   export default {
     components: {
+      BIconStar,
+      BIconStarFill,
       Card
     },
     data () {
@@ -101,6 +107,11 @@
             key: 'transcript',
             label: 'Transcript',
             sortable: true
+          },
+          {
+            key: 'star',
+            label: '',
+            sortable: false
           }
         ],
         items: [
@@ -121,7 +132,7 @@
     },
     mounted() {
       if (this.speechSessions.length) {
-        this.speechSessions.forEach((session, i) => this.renderWavesurfer(i))
+        this.speechSessions.forEach(session => this.renderWavesurfer(session))
       }
     },
     computed: {
@@ -130,11 +141,25 @@
     watch: {
       immediate: true,
       speechSessions(sessions) {
+        console.log('WATCHER')
         if (sessions.length) {
-          sessions.forEach((session, i) => this.renderWavesurfer(i))
-          
+          let wavesurferIds = this.wavesurfers.map((x, i) => {
+            return x ? i : null
+          }).filter(x => { return x })
+          sessions.forEach(session => {
+            if(wavesurferIds.indexOf(session.sessionId) == -1) {
+              this.renderWavesurfer(session)
+            }
+            else {
+              this.items = this.items.map(item => {
+                if (session.annotations && session.annotations[item.alignable_id]) {
+                  item.starred = session.annotations[item.alignable_id].starred;
+                }
+                return item
+              })
+            }
+          })       
         }
-
       }
     },
     filters: {
@@ -149,10 +174,13 @@
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
       },
-      renderWavesurfer(speechSession) {
+      renderWavesurfer(session) {
         this.$nextTick(() => {
-          this.wavesurfers[speechSession] = WaveSurfer.create({
-            container: this.$refs.waveform[speechSession],
+          var container = this.$refs.waveform.filter(item => {
+            return item.id == 'waveform-session-' + session.sessionId 
+          })[0];
+          this.wavesurfers[session.sessionId] = WaveSurfer.create({
+            container: container,
             waveColor: '#409EFF',
             progressColor: 'blue',
             minPxPerSec: 10, // for scrolling
@@ -172,7 +200,7 @@
 
               Elan.create({
                   container: '#annotations',
-                  url: 'https://storage.googleapis.com/ispeech-bucket/EAF/better_intelligibility_manifest.eaf.xml',
+                  url: session.manifestUrl,
 
                   //url: 'https://storage.googleapis.com/ispeech-bucket/EAF/manifest.eaf.xml', 
                   tiers: {
@@ -193,10 +221,10 @@
                   }
           });
         // Proxy actually points to https://storage.googleapis.com/ispeech-bucket/raw_audio
-        //  this.wavesurfers[speechSession].load('/audio/putonghua_030120_slice.mp3');
-          this.wavesurfers[speechSession].load('https://storage.googleapis.com/ispeech-bucket/raw_audio/better_intelligibility.mp3');
+        //  this.wavesurfers[session.sessionId].load('/audio/putonghua_030120_slice.mp3');
+          this.wavesurfers[session.sessionId].load(session.audioUrl);
 
-          var wavesurfer = this.wavesurfers[speechSession];
+          var wavesurfer = this.wavesurfers[session.sessionId];
 
           wavesurfer.elan.on('select', function (start, end) {
             wavesurfer.backend.play(start, end);
@@ -230,7 +258,7 @@
                       });
                     });
 
-                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, alignable_id: alignable_id, speaker: region.value, isActive: true})
+                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: region.value, isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
                   }
               }
             };
@@ -246,14 +274,14 @@
                 region = null;
 
                 if (annotation) {
-                  var row = rowFn(annotation.id, speechSession);
+                  var row = rowFn(session.sessionId + '_' + annotation.id, session.sessionId);
                   prevRow && prevRow.classList.remove('table-success');
                   prevRow = row;
                   row.classList.add('table-success');
                   var before = row.previousSibling;
                   var after = row.nextSibling;
                   if (after && after.dataset) {
-                    scrollFn(after.dataset.pk, speechSession);
+                    scrollFn(after.dataset.pk, session.sessionId);
                   }
                   // Region
                   region = wavesurfer.addRegion({
@@ -272,9 +300,9 @@
             wavesurfer.play(region.start)
           }
 
-          this.wavesurfers[speechSession].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
-          this.wavesurfers[speechSession].elan.on('ready', elanReadyFactory(wavesurfer, this.items));
-          this.wavesurfers[speechSession].on('region-click', onRegionClick);
+          this.wavesurfers[session.sessionId].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
+          this.wavesurfers[session.sessionId].elan.on('ready', elanReadyFactory(wavesurfer, this.items));
+          this.wavesurfers[session.sessionId].on('region-click', onRegionClick);
 
         })
 
@@ -283,23 +311,33 @@
       updateProfile () {
         alert('Your data: ' + JSON.stringify(this.user))
       },
-      playMusic(speechSession) {
-        console.log('play fpr' + speechSession)
-        this.wavesurfers[speechSession].playPause.bind(this.wavesurfers[speechSession])()
+      playMusic(id) {
+        this.wavesurfers[id].playPause.bind(this.wavesurfers[id])()
       },
-      clickRow(row, speechSession) {
-        this.wavesurfers[speechSession].play(row.start_time)
+      clickRow(row, sessionId) {
+        this.wavesurfers[sessionId].play(row.start_time)
       },
-      getRow(key, tableId) {
-        const tbody = this.$refs.annotationsTable[tableId].$el.querySelector('tbody')
+      getRow(key, sessionId) {
+        var container = this.$refs.annotationsTable.filter(item => {
+            return item.id == 'annotations-session-' + sessionId 
+        })[0];
+        const tbody = container.$el.querySelector('tbody')
+        console.log('get key:' + key)
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         return row;
       },
-      scrollToRow(key, tableId) {
-        const tbody = this.$refs.annotationsTable[tableId].$el.querySelector('tbody')
+      scrollToRow(key, sessionId) {
+        var container = this.$refs.annotationsTable.filter(item => {
+            return item.id == 'annotations-session-' + sessionId 
+        })[0];
+        const tbody = container.$el.querySelector('tbody')
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         row.scrollIntoViewIfNeeded(false)
-       // row.scrollIntoView()
+      },
+      toggleStar(event, row, sessionId) {
+        event.stopPropagation()
+        let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred }
+        store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       }
 
     }
