@@ -3,6 +3,7 @@ import DashboardLayout from '../layout/DashboardLayout.vue'
 import NotFound from '../pages/NotFoundPage.vue'
 
 // Admin pages
+import ChildProfile from 'src/pages/ChildProfile.vue'
 import Login from 'src/pages/Login.vue'
 import Overview from 'src/pages/Overview.vue'
 import Register from 'src/pages/Register.vue'
@@ -43,6 +44,11 @@ const routes = [
         path: 'overview',
         name: 'Overview',
         component: Overview
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: ChildProfile
       },
       {
         path: 'sessions',

@@ -15,7 +15,6 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
                   if(annotationData.starred) {
                     store.commit('setChildQuotes', annotationData.transcript)
                   }
-                  
                   annotations[annotationData.annotationId] = annotationData
               });
               session.annotations = annotations;
@@ -23,25 +22,31 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
       })
     
   	})).then(sessions => {
-        store.commit('setSpeechSessions', sessions)
-
+      childrenCollection.onSnapshot(snapshot => {
+        Promise.all(snapshot.docs.map(doc => {
+            let child = doc.data()
+            child.quotes = []
+            return child
+          })).then(children => {
+            sessions = sessions.map(session=>{
+                session.child = children.filter(child=>{
+                  return child.id == session.childId;
+                })[0];
+                return session;
+            })
+            store.commit('setSpeechSessions', sessions)
+          });
+      })
     });
 })
 
-
 childrenCollection.onSnapshot(snapshot => {
-  console.log('loading children')
   Promise.all(snapshot.docs.map(doc => {
-    console.log('CHILD')
-    console.log(doc.data())
       let child = doc.data()
-      child.id = doc.id
       child.quotes = []
       return child
-    
     })).then(children => {
         store.commit('setChildren', children)
-
     });
 })
 
@@ -109,18 +114,25 @@ const store = new Vuex.Store({
   			createdOn: new Date()
   		})
   	},
+    async updateChild({state, commit}, child) {
+      await childrenCollection
+              .where("id", "==", child.id)
+              .get()
+              .then(docs => {
+                  docs.forEach(doc => {
+                    doc.ref.update(child)
+                  })
+              })
+    },
     async updateAnnotation({state, commit}, data) {
       await speechSessionsCollection
               .where("sessionId", "==", data.sessionId)
               .get()
               .then(docs => {
-                console.log('got doc');
-                console.log(docs)
-                docs.forEach(doc=> {
+                docs.forEach(doc => {
                   var annotationsCollections = speechSessionsCollection.doc(doc.id).collection('annotations');
 
                   annotationsCollections.where("annotationId", "==", data.annotation.annotationId).get().then((annotationDocs) => {
-                      console.log(annotationDocs);
                       if (annotationDocs.empty) { // Create a new annotation
                         annotationsCollections.add(data.annotation).then(()=>store.commit('setAnnotation', data))
                       }
@@ -146,6 +158,5 @@ const store = new Vuex.Store({
     },
   }
 });
-
 
 export default store

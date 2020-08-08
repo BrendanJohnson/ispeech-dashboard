@@ -15,8 +15,10 @@
  */
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+import VueMoment from 'vue-moment'
 import firebase from 'firebase'
 import { BootstrapVue } from 'bootstrap-vue'
+
 import App from './App.vue'
 import store from "./store"
 import { auth } from "./firebase"
@@ -37,6 +39,7 @@ import './registerServiceWorker'
 Vue.use(VueRouter)
 Vue.use(BootstrapVue)
 Vue.use(LightBootstrap)
+Vue.use(VueMoment);
 
 // configure router
 const router = new VueRouter({

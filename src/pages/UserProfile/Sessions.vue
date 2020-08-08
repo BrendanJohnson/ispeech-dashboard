@@ -73,9 +73,9 @@
 <script>
   import { BIcon, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
-  import { mapState } from "vuex";
+  import { mapState } from 'vuex'
   import moment from 'moment'
-  import store from "../../store"
+  import store from '../../store'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
@@ -155,7 +155,6 @@
     watch: {
       immediate: true,
       speechSessions(sessions) {
-        console.log('WATCHER')
         if (sessions.length) {
           let wavesurferIds = this.wavesurfers.map((x, i) => {
             return x ? i : null
@@ -189,7 +188,6 @@
         store.dispatch('createSpeechSession', { content: "test" })
       },
       renderWavesurfer(session) {
-
         this.$nextTick(() => {
           var container = this.$refs.waveform.filter(item => {
             return item.id == 'waveform-session-' + session.sessionId 
@@ -279,8 +277,7 @@
                       store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
                     }
 
-
-                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: region.value, isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
+                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: ((region.value == 'child') ? session.child.name : 'Adult'), isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
                   }
               }
             };

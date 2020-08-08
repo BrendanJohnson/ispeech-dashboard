@@ -6,7 +6,7 @@
         <img class="avatar border-gray" src="img/faces/face-0.jpg" alt="..."/>
 
         <h4 class="title">{{children[0].name}}<br />
-          <small>Age: {{children[0].age_years}} years, {{children[0].age_months}} months</small>
+          <small>Age: {{ new Date() | moment('diff', children[0].dateOfBirth, 'year') }} years, {{ new Date() | moment('diff', children[0].dateOfBirth, 'month') % 12 }} months </small>
         </h4>
       </a>
     </div>
