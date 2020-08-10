@@ -10,17 +10,42 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
    		session.id = doc.id
       return speechSessionsCollection.doc(doc.id).collection('annotations').get().then(annotationSnapshot => {
               var annotations = {}
+              var adultSpeechDuration = 0
+              var childSpeechDuration = 0
+              var adultNoOfTurns = 0
+              var childNoOfTurns = 0
+              var adultTranscriptWords = 0
+              var childTranscriptWords = 0
+
               annotationSnapshot.forEach(annotationDoc => {
                   var annotationData = annotationDoc.data()
                   if(annotationData.starred) {
                     store.commit('setChildQuotes', annotationData.transcript)
                   }
+                  if ((annotationData.speaker == 'child') && annotationData.duration) {
+                    childSpeechDuration += annotationData.duration
+                    childTranscriptWords += annotationData.transcript.length
+                    childNoOfTurns++
+                  }
+                  if ((annotationData.speaker == 'adult') && annotationData.duration) {
+                    adultSpeechDuration += annotationData.duration;
+                    adultTranscriptWords += annotationData.transcript.length
+                    adultNoOfTurns++
+                  }
                   annotations[annotationData.annotationId] = annotationData
               });
-              session.annotations = annotations;
+              session.adultSpeechDuration = adultSpeechDuration
+              session.adultNoOfTurns = adultNoOfTurns
+              session.adultTranscriptWords = adultTranscriptWords
+              session.childSpeechDuration = childSpeechDuration
+              session.childNoOfTurns = childNoOfTurns
+              session.childTranscriptWords = childTranscriptWords
+              session.totalSpeechDuration = adultSpeechDuration + childSpeechDuration
+              session.totalNoOfTurns = adultNoOfTurns + childNoOfTurns
+              session.totalTranscriptWords = adultTranscriptWords + childTranscriptWords
+              session.annotations = annotations
               return session;
       })
-    
   	})).then(sessions => {
       childrenCollection.onSnapshot(snapshot => {
         Promise.all(snapshot.docs.map(doc => {
@@ -33,11 +58,13 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
                   return child.id == session.childId;
                 })[0];
                 return session;
+            }).filter(session=>{
+                return !session.deleted;
             })
             store.commit('setSpeechSessions', sessions)
           });
       })
-    });
+    })
 })
 
 childrenCollection.onSnapshot(snapshot => {
@@ -82,13 +109,7 @@ const store = new Vuex.Store({
         state.speechSessions = state.speechSessions.map(session=>{
             if (session.sessionId == value.sessionId) {
                 let annotations = session.annotations || {}
-
-                if (annotations[value.annotation.annotationId]) {
-                    annotations[value.annotation.annotationId] = value.annotation
-                }
-                else {
-                    annotations.push(value.annotation)
-                }
+                annotations[value.annotation.annotationId] = value.annotation
                 session.annotations = annotations
             }
             return session

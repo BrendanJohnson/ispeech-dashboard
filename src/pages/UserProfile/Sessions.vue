@@ -20,14 +20,11 @@
               <i class="glyphicon glyphicon-pause"></i>
               Pause
               </button>
-
             </div>
             <div class="col-6">
               <b-form-input v-model="annotationsFilter"  placeholder="Type to Search"></b-form-input>
             </div>
-        
           </div>
-
       </div>
       <div id="annotations-table-container">
         <div class="justify-content-center row">
@@ -178,7 +175,7 @@
     filters: {
       formatDate(val) {
         if (!val) { return '-' }
-        
+    
         let date = val.toDate()
         return moment(date).format('MMMM Do YYYY, h:mm a')
       }
@@ -273,7 +270,7 @@
                     });
 
                     if(!session.annotations[alignable_id]) {
-                      let annotation = { annotationId: alignable_id, transcript: transcript_data[2][0] }
+                      let annotation = { annotationId: alignable_id, duration: region.end-region.start, speaker: region.value, transcript: transcript_data[2][0] }
                       store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
                     }
 

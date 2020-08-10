@@ -9,7 +9,7 @@
             </div>
             <div slot="content">
               <p class="card-category">Sessions</p>
-              <h4 class="card-title">4</h4>
+              <h4 class="card-title">{{stats.noOfSessions}}</h4>
             </div>
             <div slot="footer">
                <div class="stats">
@@ -18,7 +18,6 @@
             </div>
           </stats-card>
         </div>
-
         <div class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-success">
@@ -26,7 +25,7 @@
             </div>
             <div slot="content">
               <p class="card-category">Total child speech time</p>
-              <h4 class="card-title">1h 14m</h4>
+              <h4 class="card-title">{{[stats.totals.childSpeechDuration, 'seconds'] | duration('humanize')}}</h4>
             </div>
             <div slot="footer">
               <div class="stats">
@@ -42,7 +41,7 @@
             </div>
             <div slot="content">
               <p class="card-category">Total words detected</p>
-              <h4 class="card-title">1,680</h4>
+              <h4 class="card-title">{{stats.totals.totalTranscriptWords}}</h4>
             </div>
             <div slot="footer">
               <div class="stats">
@@ -51,7 +50,6 @@
             </div>
           </stats-card>
         </div>
-
       </div>
       <div class="row">
         <div class="col-md-8">
@@ -62,7 +60,6 @@
               <h4 class="card-title">Child/Adult Ratio</h4>
               <p class="card-category">Percentage of time the child speaks in the session</p>
                <hr>
-              
             </template>
             <template slot="footer">
               <div class="legend">
@@ -145,6 +142,8 @@
   </div>
 </template>
 <script>
+  import { mapState } from 'vuex'
+  import moment from 'moment'
   import ChartCard from 'src/components/Cards/ChartCard.vue'
   import StatsCard from 'src/components/Cards/StatsCard.vue'
   import LTable from 'src/components/Table.vue'
@@ -155,23 +154,92 @@
       ChartCard,
       StatsCard
     },
-    data () {
-      return {
-        editTooltip: 'Edit Task',
-        deleteTooltip: 'Remove',
-        pieChart: {
-          data: {
-            labels: ['English 27%','Mandarin 32%', 'Cantonese 41%' ],
-            series: [27, 32, 41]
+    computed: {
+      stats() {
+        return {
+            noOfSessions: this.$store.state.speechSessions.length,
+            totals: this.$store.state.speechSessions.reduce((a,b) => {
+              return { childSpeechDuration: a.childSpeechDuration + b.childSpeechDuration,
+                      totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
+              };
+            }),
+
           }
-        },
-        lineChart: {
+      },
+      barChart() {
+          var dateLabels = this.$store.state.speechSessions.map(session => {
+            return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
+          })
+          var childNoOfTurns = this.$store.state.speechSessions.map(session => {
+            return session.childNoOfTurns
+          })
+          var adultNoOfTurns = this.$store.state.speechSessions.map(session => {
+            return session.adultNoOfTurns
+          })
+
+         return {
           data: {
-            labels: ['29/06/2020', '02/07/2020', '22/07/2020', '27/07/2020'],
+            labels: dateLabels,
             series: [
-              [43, 42, 32, 42],
-              [33, 49, 48, 51]
+              childNoOfTurns,
+              adultNoOfTurns
             ]
+          },
+          options: {
+            classNames: {
+              chart: 'ct-chart-utterances'
+            },
+            seriesBarDistance: 15,
+            axisX: {
+             showGrid: false,
+              labelOffset: {
+                x: 20
+              }
+             },
+            height: '245px'
+          },
+          responsiveOptions: [
+            ['screen and (max-width: 640px)', {
+              seriesBarDistance: 5,
+              axisX: {
+                labelInterpolationFnc (value) {
+                  return value[0]
+                }
+              }
+            }]
+          ]
+          }
+      },
+      pieChart() {
+        var languageMap = this.$store.state.speechSessions.reduce((entryMap, e) => entryMap.set(e.language, [...entryMap.get(e.language)||[], e]),
+            new Map()
+        );
+        var languageComposition = Array.from(languageMap.values()).map((language)=>{
+            return language.length
+        })
+
+        return {
+          data: {
+            labels: Array.from(languageMap.keys()),
+            series: languageComposition
+          }
+        }
+      },
+      lineChart () {
+        var dateLabels = this.$store.state.speechSessions.map(session => {
+          return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
+        })
+        var childSpeechPercentages = this.$store.state.speechSessions.map(session => {
+          return Math.abs((session.childSpeechDuration / session.totalSpeechDuration) * 100)
+        })
+        var childTurnsPercentages = this.$store.state.speechSessions.map(session => {
+          return Math.abs((session.childNoOfTurns / session.totalNoOfTurns) * 100)
+        })
+        console.log(childSpeechPercentages)
+        return {
+          data: {
+            labels: dateLabels,
+            series: [childSpeechPercentages, childTurnsPercentages]
           },
           options: {
             low: 0,
@@ -204,39 +272,14 @@
               }
             }]
           ]
-        },
-        barChart: {
-          data: {
-            labels: ['29/06/2020', '02/07/2020', '22/07/2020', '27/07/2020'],
-            series: [
-              [42, 50, 20, 58],
-              [50, 59, 42, 72]
-            ]
-          },
-          options: {
-            classNames: {
-              chart: 'ct-chart-utterances'
-            },
-            seriesBarDistance: 10,
-            axisX: {
-             showGrid: false,
-              labelOffset: {
-                x: 30
-              }
-             },
-            height: '245px'
-          },
-          responsiveOptions: [
-            ['screen and (max-width: 640px)', {
-              seriesBarDistance: 5,
-              axisX: {
-                labelInterpolationFnc (value) {
-                  return value[0]
-                }
-              }
-            }]
-          ]
-        },
+          
+        };
+      }
+    },
+    data () {
+      return {
+        editTooltip: 'Edit Task',
+        deleteTooltip: 'Remove',
         tableData: {
           data: [
             {title: 'Practice speaking in group class', checked: false},
