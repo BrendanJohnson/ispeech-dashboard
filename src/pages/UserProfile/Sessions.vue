@@ -47,13 +47,21 @@
                 <img src="https://storage.googleapis.com/ispeech-bucket/EAF/trees/better_intelligibility_77.png" alt="">
               </b-popover>
             </template>
+            <template v-slot:cell(transcript)="row">
+            		<p v-if="row.item.alignable_id == editingRow"><input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input></p>
+            		<p v-else>{{row.item.transcript}}</p>
+            		<b-icon-file-plus size="sm" scale="1" class="float-right" @click="toggleEdit($event, row)">
+		        	</b-icon-file-plus>
+        
+            </template>
             <template v-slot:cell(star)="row">
                 <div @click="toggleStar($event, row, session.sessionId)" class="mb-0">
-                  <b-icon-star-fill v-if="row.item.starred" scale="1" variant="primary"></b-icon-star-fill>
-                  <b-icon-star v-else scale="1" variant="primary"></b-icon-star>
+                  <b-icon-star-fill v-if="row.item.starred" scale="1.4" variant="primary"></b-icon-star-fill>
+                  <b-icon-star v-else scale="1.4" variant="primary"></b-icon-star>
                 </div>
             </template>
         </b-table>
+
       </div>
     <div id="annotations" class="table-responsive" style="display:none;">
       <!-- Hidden as we want to use our own table -->
@@ -68,7 +76,7 @@
   </div>
 </template>
 <script>
-  import { BIcon, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BIconFilePlus, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
@@ -80,12 +88,14 @@
 
   export default {
     components: {
+      BIconFilePlus,
       BIconStar,
       BIconStarFill,
       Card
     },
     data () {
       return {
+      	editingRow: null,
         show: false,
         annotationsFilter: '',
         wavesurfers: [],
@@ -274,7 +284,7 @@
                       store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
                     }
 
-                    items.push({transcript: transcript_data[2][0], start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: ((region.value == 'child') ? session.child.name : 'Adult'), isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
+                    items.push({transcript: (session.annotations[alignable_id] && session.annotations[alignable_id].transcript ? session.annotations[alignable_id].transcript : transcript_data[2][0]), start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: ((region.value == 'child') ? session.child.name : 'Adult'), isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
                   }
               }
             };
@@ -338,7 +348,6 @@
             return item.id == 'annotations-session-' + sessionId 
         })[0];
         const tbody = container.$el.querySelector('tbody')
-        console.log('get key:' + key)
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         return row;
       },
@@ -349,6 +358,16 @@
         const tbody = container.$el.querySelector('tbody')
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         row.scrollIntoViewIfNeeded(false)
+      },
+      saveTranscriptRow(row, sessionId) {
+      	event.stopPropagation()
+      	this.editingRow = null
+      	let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred, transcript: row.item.transcript }
+        store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
+      },
+      toggleEdit(event, row) {
+        event.stopPropagation()
+      	this.editingRow = row.item.alignable_id
       },
       toggleStar(event, row, sessionId) {
         event.stopPropagation()
