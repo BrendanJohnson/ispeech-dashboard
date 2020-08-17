@@ -10,6 +10,10 @@
         <i class="nc-icon nc-notes"></i>
         <p>Sessions</p>
       </sidebar-link>
+      <sidebar-link to="/admin/newsession">
+        <i class="nc-icon nc-simple-add"></i>
+        <p>New Session</p>
+      </sidebar-link>
     </side-bar>
     <div class="main-panel">
       <top-navbar></top-navbar>

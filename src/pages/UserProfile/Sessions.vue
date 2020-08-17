@@ -48,10 +48,21 @@
               </b-popover>
             </template>
             <template v-slot:cell(transcript)="row">
-            		<p v-if="row.item.alignable_id == editingRow"><input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input></p>
+            		<p v-if="row.item.alignable_id == editingRow.alignable_id"><input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input></p>
             		<p v-else>{{row.item.transcript}}</p>
-            		<b-icon-file-plus size="sm" scale="1" class="float-right" @click="toggleEdit($event, row)">
-		        	</b-icon-file-plus>
+                <b-button-toolbar>
+                <b-button-group class="btn-group-sm">
+                  <b-button variant="outline-primary">
+                                  <b-icon-file-plus size="sm" scale="1" class="float-right" @click="toggleEdit($event, row)">
+                 </b-icon-file-plus>
+                  </b-button>
+                  <b-button variant="outline-primary">
+                   
+                <b-icon-mic size="sm" scale="1" class="float-right" @click="toggleEdit($event, row, true)">
+                </b-icon-mic>
+                  </b-button>
+                </b-button-group>
+                </b-button-toolbar>
         
             </template>
             <template v-slot:cell(star)="row">
@@ -76,27 +87,64 @@
   </div>
 </template>
 <script>
-  import { BIcon, BIconFilePlus, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
+  import io from 'socket.io-client';
   import store from '../../store'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
   import Elan from 'wavesurfer.js/dist/plugin/wavesurfer.elan.js'
 
+  var downsampleBuffer = function (buffer, sampleRate, outSampleRate) {
+      if (outSampleRate == sampleRate) {
+        return buffer;
+      }
+      if (outSampleRate > sampleRate) {
+        throw "downsampling rate show be smaller than original sample rate";
+      }
+      var sampleRateRatio = sampleRate / outSampleRate;
+      var newLength = Math.round(buffer.length / sampleRateRatio);
+      var result = new Int16Array(newLength);
+      var offsetResult = 0;
+      var offsetBuffer = 0;
+      while (offsetResult < result.length) {
+        var nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+        var accum = 0, count = 0;
+        for (var i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+          accum += buffer[i];
+          count++;
+        }
+
+        result[offsetResult] = Math.min(1, accum / count) * 0x7FFF;
+        offsetResult++;
+        offsetBuffer = nextOffsetBuffer;
+      }
+      return result.buffer;
+    }
+
+
   export default {
     components: {
       BIconFilePlus,
+      BIconMic,
       BIconStar,
+      BButtonToolbar,
       BIconStarFill,
       Card
     },
     data () {
       return {
-      	editingRow: null,
+      	editingRow: {},
         show: false,
+        socket: null,
+        speechRecognitionBlock: 0,
+        speechRecognitionResults: [],
+        speechRecognitionText: 'None',
+        streamingAudio: false,
+        audioStream: null,
         annotationsFilter: '',
         wavesurfers: [],
         fields: [
@@ -152,9 +200,31 @@
       }
     },
     mounted() {
-      if (this.speechSessions.length) {
-        this.speechSessions.forEach(session => this.renderWavesurfer(session))
-      }
+    	this.socket = io.connect('localhost:3000');
+      let removeLastSentence = true;
+      //let speechResults = this.speechRecognitionText;
+      let speechRecognitionResults = this.speechRecognitionResults;
+      let speechRecognitionBlock = this.speechRecognitionBlock;
+      let speechRecognitionText = this.speechRecognitionText;
+     
+      this.socket.on('nextBlock', data => {
+        speechRecognitionBlock++
+      })
+
+      let that = this;
+
+      this.socket.on('speechData', (data) => {
+            var dataFinal = undefined || data.results[0].isFinal;
+            
+            if (dataFinal === false) {
+                speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;              
+                that.editingRow.transcript = speechRecognitionResults.join(' ');         
+            }
+      })
+
+    	if (this.speechSessions.length) {
+      	this.speechSessions.forEach(session => this.renderWavesurfer(session))
+    	}
     },
     computed: {
       ...mapState(['speechSessions'])
@@ -361,23 +431,59 @@
       },
       saveTranscriptRow(row, sessionId) {
       	event.stopPropagation()
-      	this.editingRow = null
+      	this.editingRow = {}
       	let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred, transcript: row.item.transcript }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       },
-      toggleEdit(event, row) {
+      audioInput() {
+      	const bufferSize = 2048;
+
+        this.$nextTick(() => {
+      	    this.socket.emit('startGoogleCloudStream', '');
+      	    this.streamingAudio = true;
+        		const AudioContext = window.AudioContext || window.webkitAudioContext;
+        		const context = new AudioContext({
+        			latencyHint: 'interactive',
+        		});
+
+        		const processor = context.createScriptProcessor(bufferSize, 1, 1);
+        		processor.connect(context.destination);
+        		context.resume();
+
+        		let socket = this.socket;
+
+        		navigator.mediaDevices.getUserMedia({
+        			audio: true,
+        			video: false
+        		}).then(stream => {
+        						this.audioStream = stream;
+        						let input = context.createMediaStreamSource(stream);
+        						input.connect(processor);
+                    processor.onaudioprocess = function (e) {
+                        const left = e.inputBuffer.getChannelData(0);
+                        const left16 = downsampleBuffer(left, 44100, 16000)
+                        socket.emit('binaryData', left16);
+                              
+             
+}
+        		});
+        });
+      },
+      toggleEdit(event, row, record) {
         event.stopPropagation()
-      	this.editingRow = row.item.alignable_id
+      	this.editingRow = row.item;
+        if (record) {
+
+          this.audioInput()
+        }
       },
       toggleStar(event, row, sessionId) {
         event.stopPropagation()
         let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       }
-
     }
   }
-
 </script>
 <style>
 

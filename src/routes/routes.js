@@ -7,6 +7,7 @@ import ChildProfile from 'src/pages/ChildProfile.vue'
 import Login from 'src/pages/Login.vue'
 import Overview from 'src/pages/Overview.vue'
 import Register from 'src/pages/Register.vue'
+import NewSession from 'src/pages/NewSession.vue'
 import UserProfile from 'src/pages/UserProfile.vue'
 import TableList from 'src/pages/TableList.vue'
 import Typography from 'src/pages/Typography.vue'
@@ -49,6 +50,11 @@ const routes = [
         path: 'profile',
         name: 'Profile',
         component: ChildProfile
+      },
+      {
+        path: 'newsession',
+        name: 'New Session',
+        component: NewSession
       },
       {
         path: 'sessions',
