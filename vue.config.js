@@ -6,9 +6,9 @@ function resolveSrc(_path) {
 }
 
 module.exports = {
-  publicPath: process.env.NODE_ENV === 'production'
-    ? '/ispeech-dashboard/'
-    : '/',
+  // publicPath: process.env.NODE_ENV === 'production'
+  //   ? '/ispeech-dashboard/'
+  //   : '/',
   lintOnSave: false,
   configureWebpack: {
     // Set up all the aliases we use in our app.
@@ -30,6 +30,11 @@ module.exports = {
                 target:'https://storage.googleapis.com/ispeech-bucket/raw_audio',
                 changeOrigin: true,
                 pathRewrite: {'^/audio' : ''}
+            },
+            '/NLP': {
+                target:'http://localhost:3000/',
+                port: 3000,
+                changeOrigin: true
             }
     }
   },

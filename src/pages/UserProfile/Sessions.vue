@@ -31,30 +31,46 @@
 
         </div>
         <b-table :filter="annotationsFilter" :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
-            <template v-slot:cell(show_details)="row">
-              <b-button :id="`popover-reactive-${row.index}`" variant="primary" ref="button">
-                Details
-              </b-button>
-              <b-popover
-                custom-class="hide-border"
-                boundary="viewport"
-                container="annotations-table-container"
-                :target="`popover-reactive-${row.index}`"
-                triggers="click"
-                placement="right"
-                ref="popover"
-              >
-                <img src="https://storage.googleapis.com/ispeech-bucket/EAF/trees/better_intelligibility_77.png" alt="">
-              </b-popover>
-            </template>
             <template v-slot:cell(transcript)="row">
             		<p v-if="row.item.alignable_id == editingRow.alignable_id"><input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input></p>
             		<p v-else>{{row.item.transcript}}</p>
-                <b-button-toolbar>
-                <b-button-group class="btn-group-sm">
-                  <b-button variant="outline-primary">
-                                  <b-icon-file-plus size="sm" scale="1" class="float-right" @click="toggleEdit($event, row)">
-                 </b-icon-file-plus>
+                <div v-if="row.item.syntaxValues">
+                  <syntax-canvas style="width: 100%; height: 35px;">
+                    <syntax-arrow
+                    v-for="obj, index of row.item.syntaxValues"
+                    :x1="((index / row.item.syntaxValues.length) * 100)"
+                    :x2="((index / row.item.syntaxValues.length) * 100) + (100 / row.item.syntaxValues.length)"
+                    :y1="100"
+                    :y2="100"
+                    :skip="obj.skip"
+                    :edgeLabel="obj.edgeLabel"
+                    >
+                    </syntax-arrow>
+                  </syntax-canvas>
+                  <syntax-canvas style="width: 100%; height: 50px;">
+                    <syntax-box
+                      v-for="obj, index of row.item.syntaxValues"
+                      :x1="((index / row.item.syntaxValues.length) * 100)"
+                      :x2="((index / row.item.syntaxValues.length) * 100) + (100 / row.item.syntaxValues.length)"
+                      :y1="50"
+                      :y2="40"
+                      :color="obj.color"
+                      :label="obj.label"
+                      :tagLabel="obj.tag"
+                      :detailLabel="obj.person"
+                    >
+                    </syntax-box>
+                  </syntax-canvas>  
+                </div>
+                <b-button-toolbar v-else class="float-right">
+                  <b-button-group class="btn-group-sm">
+                    <b-button variant="outline-primary">
+                      <b-icon-question-circle size="sm" scale="1" class="float-right" @click="analyzeText(row)" >
+                    </b-icon-question-circle>
+                  </b-button>
+                    <b-button variant="outline-primary">
+                      <b-icon-file-plus size="sm" scale="1" class="float-right" @click="toggleEdit($event, row)">
+                    </b-icon-file-plus>
                   </b-button>
                   <b-button variant="outline-primary">
                    
@@ -72,7 +88,6 @@
                 </div>
             </template>
         </b-table>
-
       </div>
     <div id="annotations" class="table-responsive" style="display:none;">
       <!-- Hidden as we want to use our own table -->
@@ -87,8 +102,11 @@
   </div>
 </template>
 <script>
-  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BIconQuestionCircle, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
+  import SyntaxArrow from 'src/components/Syntax/SyntaxArrow.vue'
+  import SyntaxBox from 'src/components/Syntax/SyntaxBox.vue'
+  import SyntaxCanvas from 'src/components/Syntax/SyntaxCanvas.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
   import io from 'socket.io-client';
@@ -97,6 +115,9 @@
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
   import Elan from 'wavesurfer.js/dist/plugin/wavesurfer.elan.js'
+
+  const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
+
 
   var downsampleBuffer = function (buffer, sampleRate, outSampleRate) {
       if (outSampleRate == sampleRate) {
@@ -130,10 +151,14 @@
     components: {
       BIconFilePlus,
       BIconMic,
+      BIconQuestionCircle,
       BIconStar,
       BButtonToolbar,
       BIconStarFill,
-      Card
+      Card,
+      SyntaxArrow,
+      SyntaxBox,
+      SyntaxCanvas
     },
     data () {
       return {
@@ -185,6 +210,7 @@
         ],
         items: [
         ],
+        syntaxValues: [],
         user: {
           company: 'Light dashboard',
           username: 'michael23',
@@ -261,6 +287,31 @@
       }
     },
     methods: {
+      analyzeText(row) {
+        let text = row.item.transcript;
+        let id = row.item.alignable_id;
+        const request = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inputText: text })
+        };
+          fetch('/NLP/',request).then(response => response.json())
+            .then(data => {
+              this.items = this.items.map(item => {               
+              if (item.alignable_id == id) {
+                item.syntaxValues = data.syntax.tokens.map((token, index) => {
+                  let skipAhead = token.dependencyEdge.headTokenIndex - index;
+
+                  return {
+                    val: 20, color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'], person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.', label: token.lemma, skip: skipAhead, tag: token.partOfSpeech.tag, edgeLabel: token.dependencyEdge.label
+                  }
+
+                });   
+              }
+                return item;
+              }) 
+            });
+      },
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
       },

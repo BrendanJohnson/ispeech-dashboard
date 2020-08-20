@@ -9,6 +9,10 @@ import Card from './Cards/Card.vue'
 import ChartCard from './Cards/ChartCard.vue'
 import StatsCard from './Cards/StatsCard.vue'
 
+import SyntaxArrow from './Syntax/SyntaxArrow.vue';
+import SyntaxBox from './Syntax/SyntaxCanvas.vue';
+import SyntaxCanvas from './Syntax/SyntaxBox.vue';
+
 
 import SidebarPlugin from './SidebarPlugin'
 
@@ -21,7 +25,10 @@ let components = {
   StatsCard,
   Table,
   BaseDropdown,
-  SidebarPlugin
+  SidebarPlugin,
+  SyntaxArrow,
+  SyntaxBox,
+  SyntaxCanvas
 }
 
 export default components
