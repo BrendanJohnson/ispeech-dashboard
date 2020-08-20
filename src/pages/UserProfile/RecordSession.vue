@@ -7,7 +7,13 @@
       	    <div v-if="recordingNewSession" >
         		<canvas id="newRecordingCanvas" width="800" height="150"></canvas>
       		</div>
-      		<b-button @click="recordNewSession" variant="primary">
+      		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
+      			<b-icon-pause-fill size="md" scale="1">
+	        	</b-icon-pause-fill>
+	        	Stop Recording
+
+      		</b-button>
+      		<b-button v-else  @click="recordNewSession" variant="primary">
       			<b-icon-mic-fill size="md" scale="1">
 	        	</b-icon-mic-fill>
 	        	Start Recording
@@ -63,7 +69,7 @@
     </card>
 </template>
 <script>
-  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
@@ -107,6 +113,7 @@
       BIconFilePlus,
       BIconMic,
       BIconMicFill,
+      BIconPauseFill,
       BIconStar,
       BButtonToolbar,
       BIconStarFill,
@@ -115,6 +122,9 @@
     data () {
       return {
       	editingRow: null,
+      	input: null,
+      	context: null,
+      	processor: null,
       	session: {
       		sessionId: 0
       	},
@@ -213,8 +223,16 @@
       this.socket.on('speechData', data => {
           // console.log(data.results[0].alternatives[0].transcript);
             var dataFinal = undefined || data.results[0].isFinal;
-            speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;                
+
+            speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;  
+             
                 //items[0].transcript = speechRecognitionResults.join(' ');
+
+           
+      })
+      this.socket.on('NLPData', data => {
+          console.log('RECEIVE NLP');
+          
 
            
       })
@@ -265,6 +283,18 @@
       	let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred, transcript: row.item.transcript }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       },
+      stopRecordingSession() {
+      	//socket.emit('endGoogleCloudStream', '');
+		let track = this.audioStream.getTracks()[0];
+		track.stop();
+
+		this.input.disconnect(this.processor);
+		this.processor.disconnect(this.context.destination);
+		this.context.close().then(function () {
+			this.processor = null;
+			this.context = null;
+		});
+      },
       recordNewSession() {
       	const bufferSize = 2048;
         this.recordingStartTime = Date.now();
@@ -278,7 +308,6 @@
         	let WIDTH = canvasWidth;
             let ctx = canvasElement.getContext("2d");
 
-            newRecordingCanvas
       	    this.socket.emit('startGoogleCloudStream', '');
       	    this.streamingAudio = true;
     		const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -287,6 +316,8 @@
     		});
             const analyser = context.createAnalyser();
         	const processor = context.createScriptProcessor(bufferSize, 1, 1);
+        	this.context = context;
+        	this.processor = processor; 
         	processor.connect(context.destination);
         	context.resume();
         	let backFill = [];
@@ -299,6 +330,7 @@
         	}).then(stream => {
         		this.audioStream = stream;
         		let input = context.createMediaStreamSource(stream);
+        		this.input = input;
         		input.connect(processor);
                 // Link the audio to a waveform display
                 input.connect(analyser);       
