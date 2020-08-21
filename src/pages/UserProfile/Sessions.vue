@@ -62,10 +62,10 @@
                     </syntax-box>
                   </syntax-canvas>  
                 </div>
-                <b-button-toolbar v-else class="float-right">
+                <b-button-toolbar class="float-right float-top">
                   <b-button-group class="btn-group-sm">
                     <b-button variant="outline-primary">
-                      <b-icon-question-circle size="sm" scale="1" class="float-right" @click="analyzeText(row)" >
+                      <b-icon-question-circle size="sm" scale="1" class="float-right" @click="analyzeText(row, session.sessionId)" >
                     </b-icon-question-circle>
                   </b-button>
                     <b-button variant="outline-primary">
@@ -118,6 +118,27 @@
 
   const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
 
+   const itemMapper = (session, annotation, alignable_id) => {
+
+     if(annotation && annotation.transcript) {
+        if (alignable_id == 'SEGMENT100') {
+          console.log('itemMapper');
+          console.log(annotation)
+        }
+     }
+      return {
+        transcript: annotation && annotation.transcript ? annotation.transcript : null,
+        start_time: annotation && annotation.start ? annotation.start : 'N/A',
+        end_time: annotation && annotation.end ? annotation.end : 'N/A',
+        duration: annotation && annotation.duration ? annotation.duration : 0,
+        key: session.sessionId + '_' + alignable_id,
+        alignable_id: alignable_id,
+        speaker: annotation ? ((annotation.speaker == 'child') ? session.child.name : 'Adult') : 'Unknown',
+        isActive: true,
+        starred: annotation && annotation.starred,
+        syntaxValues: annotation ? annotation.syntaxValues : null 
+      }
+  };         
 
   var downsampleBuffer = function (buffer, sampleRate, outSampleRate) {
       if (outSampleRate == sampleRate) {
@@ -145,7 +166,6 @@
       }
       return result.buffer;
     }
-
 
   export default {
     components: {
@@ -258,6 +278,7 @@
     watch: {
       immediate: true,
       speechSessions(sessions) {
+        console.log('CHANGE TO SESSIONS')
         if (sessions.length) {
           let wavesurferIds = this.wavesurfers.map((x, i) => {
             return x ? i : null
@@ -267,11 +288,10 @@
               this.renderWavesurfer(session)
             }
             else {
+              console.log('REMAP')
+
               this.items = this.items.map(item => {
-                if (session.annotations && session.annotations[item.alignable_id]) {
-                  item.starred = session.annotations[item.alignable_id].starred;
-                }
-                return item
+                return itemMapper(session, session.annotations[item.alignable_id], item.alignable_id);
               })
             }
           })       
@@ -287,9 +307,10 @@
       }
     },
     methods: {
-      analyzeText(row) {
+      analyzeText(row, sessionId) {
         let text = row.item.transcript;
         let id = row.item.alignable_id;
+
         const request = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -297,19 +318,12 @@
         };
           fetch('/NLP/',request).then(response => response.json())
             .then(data => {
-              this.items = this.items.map(item => {               
-              if (item.alignable_id == id) {
-                item.syntaxValues = data.syntax.tokens.map((token, index) => {
-                  let skipAhead = token.dependencyEdge.headTokenIndex - index;
+              let annotation = {  annotationId: row.item.alignable_id,
+                                  starred: !row.item.starred,
+                                  transcript: row.item.transcript,
+                                  nlp: data }
+              store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
 
-                  return {
-                    val: 20, color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'], person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.', label: token.lemma, skip: skipAhead, tag: token.partOfSpeech.tag, edgeLabel: token.dependencyEdge.label
-                  }
-
-                });   
-              }
-                return item;
-              }) 
             });
       },
       createSession() {
@@ -385,7 +399,7 @@
                                   drag: false,
                                   color: (region.value == 'adult') ? 'rgba(29, 200, 234, 0.3)' : 'rgba(234, 29, 200, 0.3)'
                     });
-                    var transcript_data = wavesurfer.elan.data.tiers.map(function(tier) {
+                    let transcript_data = wavesurfer.elan.data.tiers.map(function(tier) {
                       var matchingAnnotations = [];
                       if (tier.annotations) {
                          matchingAnnotations = tier.annotations.filter(function(annotation) {
@@ -400,12 +414,21 @@
                       });
                     });
 
-                    if(!session.annotations[alignable_id]) {
-                      let annotation = { annotationId: alignable_id, duration: region.end-region.start, speaker: region.value, transcript: transcript_data[2][0] }
+                    let annotation = session.annotations[region.id];
+
+                    if(!session.annotations[alignable_id] || (session.annotations[alignable_id] && !session.annotations[alignable_id].start)) {
+                      let annotation = {
+                        annotationId: alignable_id,
+                        start: region.start,
+                        end: region.end,
+                        duration: region.end-region.start,
+                        speaker: region.value,
+                        transcript: transcript_data[2][0]
+                      }
                       store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
                     }
 
-                    items.push({transcript: (session.annotations[alignable_id] && session.annotations[alignable_id].transcript ? session.annotations[alignable_id].transcript : transcript_data[2][0]), start_time: region.start, end_time: region.end, duration: region.end-region.start, key: session.sessionId + '_' + alignable_id, alignable_id: alignable_id, speaker: ((region.value == 'child') ? session.child.name : 'Adult'), isActive: true, starred: session.annotations[alignable_id] && session.annotations[alignable_id].starred})
+                    items.push(itemMapper(session, session.annotations[region.id], region.id));
                   }
               }
             };

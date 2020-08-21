@@ -4,6 +4,19 @@ import { childrenCollection, speechSessionsCollection } from "./firebase"
 
 Vue.use(Vuex);
 
+const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
+
+const annotationNlpMapper = (annotation, nlp) => {
+  return Object.assign({}, annotation, {
+      syntaxValues: nlp ? nlp.syntax.tokens.map((token, index) => {
+            let skipAhead = token.dependencyEdge.headTokenIndex - index;
+            return {
+              val: 20, color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'], person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.', label: token.lemma, skip: skipAhead, tag: token.partOfSpeech.tag, edgeLabel: token.dependencyEdge.label
+            }
+      }) : null
+  })
+}
+
 speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
  	Promise.all(snapshot.docs.map(doc => {
     	let session = doc.data()
@@ -18,10 +31,7 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
               var childTranscriptWords = 0
 
               annotationSnapshot.forEach(annotationDoc => {
-                  var annotationData = annotationDoc.data()
-                  if(annotationData.starred) {
-                    store.commit('setChildQuotes', annotationData.transcript)
-                  }
+                  let annotationData = annotationNlpMapper(annotationDoc.data(), annotationDoc.data().nlp);
                   if ((annotationData.speaker == 'child') && annotationData.duration) {
                     childSpeechDuration += annotationData.duration
                     childTranscriptWords += annotationData.transcript.length
@@ -34,6 +44,7 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
                   }
                   annotations[annotationData.annotationId] = annotationData
               });
+
               session.adultSpeechDuration = adultSpeechDuration
               session.adultNoOfTurns = adultNoOfTurns
               session.adultTranscriptWords = adultTranscriptWords
@@ -152,14 +163,18 @@ const store = new Vuex.Store({
               .then(docs => {
                 docs.forEach(doc => {
                   var annotationsCollections = speechSessionsCollection.doc(doc.id).collection('annotations');
-
                   annotationsCollections.where("annotationId", "==", data.annotation.annotationId).get().then((annotationDocs) => {
                       if (annotationDocs.empty) { // Create a new annotation
                         annotationsCollections.add(data.annotation).then(()=>store.commit('setAnnotation', data))
                       }
                       else {
                         annotationDocs.forEach(annotationDoc=> { // Update an annotation
-                            annotationDoc.ref.update(data.annotation).then(()=>store.commit('setAnnotation', data))
+                            let updatedAnnotation = data.annotation;
+                            annotationDoc.ref.update(updatedAnnotation).then(()=> {
+                              data.annotation = annotationNlpMapper(updatedAnnotation, updatedAnnotation.nlp);
+                              store.commit('setAnnotation', data);
+                              if (updatedAnnotation.starred) store.commit('setChildQuotes', updatedAnnotation.transcript);
+                            });
                         })
                       }
                   })
