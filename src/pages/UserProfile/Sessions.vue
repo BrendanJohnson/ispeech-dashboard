@@ -81,6 +81,9 @@
                 </b-button-toolbar>
         
             </template>
+            <template v-slot:cell(sentiment)="row">
+                <b-icon :icon="'emoji-' + row.item.sentiment" scale="1.4" variant="primary"></b-icon>
+            </template>
             <template v-slot:cell(star)="row">
                 <div @click="toggleStar($event, row, session.sessionId)" class="mb-0">
                   <b-icon-star-fill v-if="row.item.starred" scale="1.4" variant="primary"></b-icon-star-fill>
@@ -102,7 +105,7 @@
   </div>
 </template>
 <script>
-  import { BIcon, BIconQuestionCircle, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BIconEmojiSmile, BIconEmojiNeutral, BIconEmojiFrown, BIconEmojiDizzy, BIconEmojiLaughing, BIconQuestionCircle, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import SyntaxArrow from 'src/components/Syntax/SyntaxArrow.vue'
   import SyntaxBox from 'src/components/Syntax/SyntaxBox.vue'
@@ -116,16 +119,15 @@
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
   import Elan from 'wavesurfer.js/dist/plugin/wavesurfer.elan.js'
 
-  const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
+  const sentimentMapper = sentiment => {
+    if (sentiment > 0.8) return 'laughing';
+    else if (sentiment > 0.5) return 'smile';
+    else if (sentiment > 0) return 'neutral';
+    else if (sentiment > -0.5) return 'frown';
+    else return 'dizzy'
+  }
 
-   const itemMapper = (session, annotation, alignable_id) => {
-
-     if(annotation && annotation.transcript) {
-        if (alignable_id == 'SEGMENT100') {
-          console.log('itemMapper');
-          console.log(annotation)
-        }
-     }
+  const itemMapper = (session, annotation, alignable_id) => {
       return {
         transcript: annotation && annotation.transcript ? annotation.transcript : null,
         start_time: annotation && annotation.start ? annotation.start : 'N/A',
@@ -135,6 +137,7 @@
         alignable_id: alignable_id,
         speaker: annotation ? ((annotation.speaker == 'child') ? session.child.name : 'Adult') : 'Unknown',
         isActive: true,
+        sentiment: annotation && annotation.sentiment ? sentimentMapper(annotation.sentiment) : null,
         starred: annotation && annotation.starred,
         syntaxValues: annotation ? annotation.syntaxValues : null 
       }
@@ -169,6 +172,12 @@
 
   export default {
     components: {
+      BIcon,
+      BIconEmojiSmile,
+      BIconEmojiNeutral,
+      BIconEmojiFrown,
+      BIconEmojiDizzy,
+      BIconEmojiLaughing,
       BIconFilePlus,
       BIconMic,
       BIconQuestionCircle,
@@ -194,10 +203,6 @@
         wavesurfers: [],
         fields: [
           {
-            key: 'show_details',
-            label: ''
-          },
-          {
             key: 'start_time',
             sortable: true
           },
@@ -216,6 +221,10 @@
           {
             key: 'speaker',
             sortable: true
+          },
+          {
+            key: 'sentiment',
+            label: ''
           },
           {
             key: 'transcript',
@@ -278,18 +287,15 @@
     watch: {
       immediate: true,
       speechSessions(sessions) {
-        console.log('CHANGE TO SESSIONS')
         if (sessions.length) {
           let wavesurferIds = this.wavesurfers.map((x, i) => {
             return x ? i : null
-          }).filter(x => { return x })
+          }).filter(x => { return x });
           sessions.forEach(session => {
             if(wavesurferIds.indexOf(session.sessionId) == -1) {
               this.renderWavesurfer(session)
             }
             else {
-              console.log('REMAP')
-
               this.items = this.items.map(item => {
                 return itemMapper(session, session.annotations[item.alignable_id], item.alignable_id);
               })
@@ -308,23 +314,21 @@
     },
     methods: {
       analyzeText(row, sessionId) {
-        let text = row.item.transcript;
-        let id = row.item.alignable_id;
-
-        const request = {
+        let request = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ inputText: text })
+          body: JSON.stringify({ inputText: row.item.transcript })
         };
-          fetch('/NLP/',request).then(response => response.json())
+        fetch('/NLP/',request).then(response => response.json())
             .then(data => {
-              let annotation = {  annotationId: row.item.alignable_id,
-                                  starred: !row.item.starred,
+              let annotation = {  
+                                  annotationId: row.item.alignable_id,
+                                  starred: !!row.item.starred,
                                   transcript: row.item.transcript,
-                                  nlp: data }
+                                  nlp: data
+                                };
               store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
-
-            });
+        });
       },
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
@@ -465,18 +469,14 @@
               }      
             }
           }
-
           var onRegionClick = function(region) {
             wavesurfer.play(region.start)
           }
-
           this.wavesurfers[session.sessionId].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
           this.wavesurfers[session.sessionId].elan.on('ready', elanReadyFactory(wavesurfer, this.items));
           this.wavesurfers[session.sessionId].on('region-click', onRegionClick);
 
         })
-
-
       },
       updateProfile () {
         alert('Your data: ' + JSON.stringify(this.user))
@@ -506,7 +506,7 @@
       saveTranscriptRow(row, sessionId) {
       	event.stopPropagation()
       	this.editingRow = {}
-      	let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred, transcript: row.item.transcript }
+      	let annotation = { annotationId: row.item.alignable_id, starred: !!row.item.starred, transcript: row.item.transcript }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       },
       audioInput() {
@@ -536,10 +536,9 @@
                     processor.onaudioprocess = function (e) {
                         const left = e.inputBuffer.getChannelData(0);
                         const left16 = downsampleBuffer(left, 44100, 16000)
-                        socket.emit('binaryData', left16);
-                              
+                        socket.emit('binaryData', left16);                    
              
-}
+              }
         		});
         });
       },
@@ -553,7 +552,7 @@
       },
       toggleStar(event, row, sessionId) {
         event.stopPropagation()
-        let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred }
+        let annotation = { annotationId: row.item.alignable_id, starred: !row.item.starred };
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       }
     }

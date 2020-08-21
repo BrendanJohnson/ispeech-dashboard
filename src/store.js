@@ -13,7 +13,8 @@ const annotationNlpMapper = (annotation, nlp) => {
             return {
               val: 20, color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'], person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.', label: token.lemma, skip: skipAhead, tag: token.partOfSpeech.tag, edgeLabel: token.dependencyEdge.label
             }
-      }) : null
+      }) : null,
+      sentiment: (nlp && nlp.sentiment) ? nlp.sentiment.score : null
   })
 }
 
