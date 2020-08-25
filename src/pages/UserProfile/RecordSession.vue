@@ -4,16 +4,17 @@
         	New Session
       	</h4>
       	<div>
-      	    <div v-if="recordingNewSession" >
+      	   <div v-if="recordingNewSession" >
         		<canvas id="newRecordingCanvas" width="800" height="150"></canvas>
       		</div>
+          <input type="file" @change="processFile($event)">
       		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
       			<b-icon-pause-fill size="md" scale="1">
 	        	</b-icon-pause-fill>
 	        	Stop Recording
 
       		</b-button>
-      		<b-button v-else  @click="recordNewSession" variant="primary">
+      		<b-button v-else @click="recordNewSession" variant="primary">
       			<b-icon-mic-fill size="md" scale="1">
 	        	</b-icon-mic-fill>
 	        	Start Recording
@@ -73,7 +74,8 @@
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
-  import io from 'socket.io-client';
+  import io from 'socket.io-client'
+  import * as tf from '@tensorflow/tfjs'
   import store from '../../store'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
@@ -121,9 +123,11 @@
     },
     data () {
       return {
+        audioData: null,
       	editingRow: null,
       	input: null,
       	context: null,
+        mic: null,
       	processor: null,
       	session: {
       		sessionId: 0
@@ -295,6 +299,47 @@
 			this.context = null;
 		});
       },
+      stopRecordAudio() {
+        this.mic.stop();
+        const spectrogramTensor = this.audioData.spectrogram;
+        spectrogramTensor.print();
+        const waveformTensor = this.audioData.waveform;
+        waveformTensor.print();
+      },
+      processFile(event) {
+        const fftLength = 512;
+        const frameLength = 400;
+        const frameStep = 160;
+        const sampleRate = 16000;
+      
+        this.readBlob(event.target.files[0], buffer => {
+            const sourceAudioBuffer = buffer;
+            const left = sourceAudioBuffer.getChannelData(0);
+            const left16 = downsampleBuffer(left, 44100, sampleRate)
+            const data = new Float32Array(left16);
+            
+            // Use Tensorflow to perform sftf
+            console.time('fft')
+            const x = tf.tensor1d(data); //.reshape([-1, ...recognizer.modelInputShape().slice(1));
+            const stfts = tf.signal.stft(x, frameLength, frameStep, fftLength);
+            console.timeEnd('fft')
+           
+            const stftsMagnitude = tf.transpose(tf.abs(stfts))
+            const tensorData = stftsMagnitude.dataSync();
+          
+        });
+      },
+      readBlob(blob, cb) {
+        const reader = new FileReader();
+        const audioContext = new AudioContext();
+        reader.onload = function(ev) {
+            //reader.readAsArrayBuffer(ev.target.result).then(cb);
+            // Decode audio
+            audioContext.decodeAudioData(ev.target.result).then(cb);
+        };
+
+        reader.readAsArrayBuffer(blob);
+      },
       recordNewSession() {
       	const bufferSize = 2048;
         this.recordingStartTime = Date.now();
@@ -338,6 +383,8 @@
                 let bufferLength = analyser.frequencyBinCount;
                 // let dataArray = new Uint8Array(bufferLength);
                 let dataArray = new Float32Array(bufferLength);
+                console.log('da')
+                console.log(dataArray);
                 var max = 0;
                 let barWidth = (WIDTH / bufferLength) * 2.5;
                 let countTo10 = 0;
