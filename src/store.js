@@ -7,14 +7,40 @@ Vue.use(Vuex);
 const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
 
 const annotationNlpMapper = (annotation, nlp) => {
+
+  const tagMap = new Map();
+  const tagCounts = {};
+
+  if (nlp && nlp.syntax.tokens) {
+    nlp.syntax.tokens.forEach(item => {
+         const key = item.partOfSpeech.tag
+         const collection = tagMap.get(key);
+         if (!collection) {
+             tagMap.set(key, [item]);
+         } else {
+             collection.push(item);
+         }
+    });
+    for (const [key, value] of tagMap.entries()) {
+      if(tagCounts[key]) tagCounts[key] = tagCounts[key] + value.length;
+      else tagCounts[key] = value.length;    
+    }
+  }
+
   return Object.assign({}, annotation, {
       syntaxValues: nlp ? nlp.syntax.tokens.map((token, index) => {
             let skipAhead = token.dependencyEdge.headTokenIndex - index;
             return {
-              val: 20, color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'], person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.', label: token.lemma, skip: skipAhead, tag: token.partOfSpeech.tag, edgeLabel: token.dependencyEdge.label
+              val: 20,
+              color: syntaxColors[token.partOfSpeech.tag] || syntaxColors['DEFAULT'],
+              person: (token.partOfSpeech.person.indexOf('UNKNOWN') > -1) ? ' ' : token.partOfSpeech.person.toLowerCase() + ' p.',
+              label: token.lemma, skip: skipAhead,
+              tag: token.partOfSpeech.tag,
+              edgeLabel: token.dependencyEdge.label
             }
       }) : null,
-      sentiment: (nlp && nlp.sentiment) ? nlp.sentiment.score : null
+      sentiment: (nlp && nlp.sentiment) ? nlp.sentiment.score : null,
+      tagCounts: tagCounts
   })
 }
 
@@ -30,6 +56,7 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
               var childNoOfTurns = 0
               var adultTranscriptWords = 0
               var childTranscriptWords = 0
+              var tagTotals = {};
 
               annotationSnapshot.forEach(annotationDoc => {
                   let annotationData = annotationNlpMapper(annotationDoc.data(), annotationDoc.data().nlp);
@@ -43,6 +70,15 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
                     adultTranscriptWords += annotationData.transcript.length
                     adultNoOfTurns++
                   }
+                  if (annotationData.tagCounts) {
+                    for (let [key, value] of Object.entries(annotationData.tagCounts)) { 
+                        if (tagTotals[key]) { //(4)
+                          tagTotals[key] += value; //(5)
+                        } else { //(6)
+                          tagTotals[key] = value;
+                        }
+                    }
+                  }
                   annotations[annotationData.annotationId] = annotationData
               });
 
@@ -52,6 +88,7 @@ speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
               session.childSpeechDuration = childSpeechDuration
               session.childNoOfTurns = childNoOfTurns
               session.childTranscriptWords = childTranscriptWords
+              session.tagTotals = tagTotals
               session.totalSpeechDuration = adultSpeechDuration + childSpeechDuration
               session.totalNoOfTurns = adultNoOfTurns + childNoOfTurns
               session.totalTranscriptWords = adultTranscriptWords + childTranscriptWords
