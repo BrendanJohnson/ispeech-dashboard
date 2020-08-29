@@ -3,14 +3,16 @@
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
+
       </h4>
       <div :id="'waveform-session-' + session.sessionId" ref="waveform">
           <!-- Here be the waveform -->
         </div>
         <div id="wave-timeline" ref="wave-timeline">
         </div>
+
         <div>
-          <hr/>
+         <hr/>
           <div class="row">
             <div class="col-6">
               <button class="btn btn-primary" @click="playMusic(session.sessionId)">
@@ -26,6 +28,21 @@
             </div>
           </div>
       </div>
+    <div class="row">
+      <div class="col-12">
+            <a v-b-toggle class="float-right" href="#example-collapse" @click.prevent>Session Statistics</a>
+       
+          </div>
+      </div>
+       <b-collapse id="example-collapse">
+      <b-card title="Word types">
+      <div>
+        <p v-for="(count, tag) in session.tagTotals">{{tag}}: {{count}}</p>
+        </div>
+      </b-card>
+    </b-collapse>
+         
+
       <div id="annotations-table-container">
         <div class="justify-content-center row">
 
@@ -224,7 +241,8 @@
           },
           {
             key: 'sentiment',
-            label: ''
+            label: '',
+            sortable: true
           },
           {
             key: 'transcript',
