@@ -288,16 +288,19 @@
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       },
       stopRecordingSession() {
-      	//socket.emit('endGoogleCloudStream', '');
-		let track = this.audioStream.getTracks()[0];
-		track.stop();
-
-		this.input.disconnect(this.processor);
-		this.processor.disconnect(this.context.destination);
-		this.context.close().then(function () {
-			this.processor = null;
-			this.context = null;
-		});
+        const context = this.context;
+    		const track = this.audioStream.getTracks()[0];
+        const processor = this.processor;
+        const socket = this.socket;
+    		track.stop();
+    		this.input.disconnect(processor);
+    		processor.disconnect(context.destination);
+    		
+        context.close().then(function () {
+    			//processor = null;
+    		  //context = null;
+          socket.emit('endGoogleCloudStream', '');
+    		});
       },
       stopRecordAudio() {
         this.mic.stop();
@@ -382,7 +385,6 @@
               let bufferLength = analyser.frequencyBinCount;
               // let dataArray = new Uint8Array(bufferLength);
               let dataArray = new Float32Array(bufferLength);
-              console.log('bufferSize: ' + bufferSize + ', frequency bins: ' + bufferLength)
               var max = 0;
               let barWidth = (WIDTH / bufferLength) * 2.5;
               let countTo10 = 0;
@@ -395,7 +397,7 @@
         			    const left16 = downsampleBuffer(left, 44100, 16000)
         			    socket.emit('binaryData', left16);
                   // Show analyzer 
-                 let barHeight;
+                  let barHeight;
 					        //analyser.getByteFrequencyData(dataArray);
                   analyser.getFloatFrequencyData(dataArray);
 					        let sum = 0;
