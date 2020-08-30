@@ -209,14 +209,13 @@
       let speechRecognitionText = this.speechRecognitionText;
       let items = this.items;
 
-      this.socket.on('timestampsResult', timestamps => {
-         // console.log(timestamps);
-         // this.generateXml(timestamps);
-         console.log('FINISHED PROCESSING')
-
-
+      this.socket.on('timestampsResult', result => {
+         this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
+         this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
+         console.log(this.speechSession);
+         store.dispatch('updateSession',this.speechSession)
       });
-      
+
       this.socket.on('nextBlock', data => {
         let elapsedTimeMs = Date.now() - this.recordingStartTime;
         let elapsedTimeM = Math.floor(elapsedTimeMs/60000);
@@ -318,7 +317,7 @@
         context.close().then(function () {
     			//processor = null;
     		  //context = null;
-          socket.emit('endGoogleCloudStream', '');
+          socket.emit('endGoogleCloudStream');
     		});
       },
       stopRecordAudio() {
@@ -366,10 +365,8 @@
           this.recordingStartTime = Date.now();
           this.recordingNewSession = true;
           store.dispatch('createSpeechSession').then(()=> {
-              const sessionId = this.speechSession.sessionId;
-              console.log('CREATED SESSION FOR: ' + sessionId)
               this.$nextTick(() => {
-                  this.socket.emit('startGoogleCloudStream', '');
+                  this.socket.emit('startGoogleCloudStream', this.speechSession.sessionId);
                   this.streamingAudio = true;
                   const AudioContext = window.AudioContext || window.webkitAudioContext;
                   const context = new AudioContext({

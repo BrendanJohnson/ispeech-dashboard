@@ -146,7 +146,7 @@ const store = new Vuex.Store({
       state.children = value;
     },
   	setSpeechSessions(state, value) {
-  		state.speechSessions = value;
+  		state.speechSessions = [value[0]];
   	},
     setSpeechSession(state, value) {
       state.speechSession = value;
@@ -202,6 +202,18 @@ const store = new Vuex.Store({
                     doc.ref.update(child)
                   })
               })
+    },
+    async updateSession({state, commit}, data) {
+         await speechSessionsCollection
+                .where("sessionId", "==", data.sessionId)
+                .get()
+                .then(docs => {
+                    docs.forEach(doc => {
+                        doc.ref.update(data).then(()=>{
+                            store.commit('setSpeechSession', data);
+                        })
+                    })
+                })
     },
     async updateAnnotation({state, commit}, data) {
       await speechSessionsCollection
