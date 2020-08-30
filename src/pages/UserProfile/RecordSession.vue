@@ -18,7 +18,11 @@
       			<b-icon-mic-fill size="md" scale="1">
 	        	</b-icon-mic-fill>
 	        	Start Recording
-	        </b-button>    	
+	        </b-button>  
+          <b-button @click="testXmlGeneration" variant="primary">
+            
+            XML
+          </b-button>     	
       	</div>
       	<div id="annotations-table-container">
 	        <div class="justify-content-center row">
@@ -77,6 +81,7 @@
   import io from 'socket.io-client'
   import * as tf from '@tensorflow/tfjs'
   import store from '../../store'
+  import eafUtil from '../../eafUtil'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
@@ -202,6 +207,14 @@
       let speechRecognitionBlock = this.speechRecognitionBlock;
       let speechRecognitionText = this.speechRecognitionText;
       let items = this.items;
+
+      this.socket.on('timestampsResult', timestamps => {
+          console.log(timestamps);
+          this.generateXml(timestamps);
+
+
+
+      });
       
       this.socket.on('nextBlock', data => {
         let elapsedTimeMs = Date.now() - this.recordingStartTime;
@@ -255,6 +268,11 @@
     methods: {
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
+      },
+      testXmlGeneration() {
+        const json = '[{"speaker":"adult","startTime":0.128,"endTime":1.48},{"speaker":"adult","startTime":1.48,"endTime":3.044},{"speaker":"child","startTime":3.044,"endTime":6.72},{"speaker":"child","startTime":10.192,"endTime":13.652},{"speaker":"adult","startTime":13.652,"endTime":15.184},{"speaker":"child","startTime":15.184,"endTime":19.488}]';
+      
+        const xmlString = eafUtil.timestampsToXml(JSON.parse(json));
       },
       updateProfile () {
         alert('Your data: ' + JSON.stringify(this.user))
