@@ -25,6 +25,9 @@ The repo uses [vue-cli](https://github.com/vuejs/vue-cli) scaffolding which take
 ### Deploy build to Google Cloud Run
 `gcloud run deploy --image gcr.io/ispeech-brendan/ispeech-dashboard --platform managed --region us-central1`
 
-
+## :cloud: Cloud Bucket configuration
+In order to access XML manifests stored in Google Cloud, CORS needs to be setup on the GCS bucket.
+After authentication with your Google Account, use gsutil to execute the following command with the provided cors.json:
+`gsutil cors set cors.json gs://ispeech-manifests`
 
 
