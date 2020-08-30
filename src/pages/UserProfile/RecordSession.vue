@@ -130,6 +130,7 @@
       return {
         audioData: null,
       	editingRow: null,
+        fftBufferSize: 512, //2048;
       	input: null,
       	context: null,
         mic: null,
@@ -209,9 +210,9 @@
       let items = this.items;
 
       this.socket.on('timestampsResult', timestamps => {
-          console.log(timestamps);
-          this.generateXml(timestamps);
-
+         // console.log(timestamps);
+         // this.generateXml(timestamps);
+         console.log('FINISHED PROCESSING')
 
 
       });
@@ -255,7 +256,7 @@
       })
     },
     computed: {
-      ...mapState(['speechSessions'])
+      ...mapState(['speechSession'])
     },
     filters: {
       formatDate(val) {
@@ -362,102 +363,105 @@
         reader.readAsArrayBuffer(blob);
       },
       recordNewSession() {
-      	  const bufferSize = 512; //2048;
           this.recordingStartTime = Date.now();
-
           this.recordingNewSession = true;
-          this.$nextTick(() => {
-        	    let canvasElement = document.getElementById('newRecordingCanvas');
-        	    let canvasWidth = canvasElement.parentNode.parentElement.clientWidth;
-        	    canvasElement.width = canvasWidth;
-        	    let HEIGHT = 150;
-        	    let WIDTH = canvasWidth;
-              let ctx = canvasElement.getContext("2d");
-      	      this.socket.emit('startGoogleCloudStream', '');
-      	      this.streamingAudio = true;
-    		      const AudioContext = window.AudioContext || window.webkitAudioContext;
-        		  const context = new AudioContext({
-        			  latencyHint: 'interactive',
-        		  });
-              const analyser = context.createAnalyser();
-            	const processor = context.createScriptProcessor(bufferSize, 1, 1);
-            	this.context = context;
-            	this.processor = processor; 
-            	processor.connect(context.destination);
-            	context.resume();
-            	let backFill = [];
-            	let backFillPosition = 0;
-            	let socket = this.socket;
+          store.dispatch('createSpeechSession').then(()=> {
+              const sessionId = this.speechSession.sessionId;
+              console.log('CREATED SESSION FOR: ' + sessionId)
+              this.$nextTick(() => {
+                  this.socket.emit('startGoogleCloudStream', '');
+                  this.streamingAudio = true;
+                  const AudioContext = window.AudioContext || window.webkitAudioContext;
+                  const context = new AudioContext({
+                    latencyHint: 'interactive',
+                  });
+                  const analyser = context.createAnalyser();
+                  const processor = context.createScriptProcessor(this.fftBufferSize, 1, 1);
+                  this.context = context;
+                  this.processor = processor; 
+                  processor.connect(context.destination);
+                  context.resume();
+                  //let socket = this.socket;
 
-        	navigator.mediaDevices.getUserMedia({
-        		audio: true,
-        		video: false
-        	}).then(stream => {
-        		  this.audioStream = stream;
-        		  let input = context.createMediaStreamSource(stream);
-        		  this.input = input;
-        		  input.connect(processor);
-              // Link the audio to a waveform display
-              input.connect(analyser);       
-              analyser.fftSize = bufferSize;
-              let bufferLength = analyser.frequencyBinCount;
-              // let dataArray = new Uint8Array(bufferLength);
-              let dataArray = new Float32Array(bufferLength);
-              var max = 0;
-              let barWidth = (WIDTH / bufferLength) * 2.5;
-              let countTo10 = 0;
-              let x = 0;
-              ctx.fillStyle = 'rgb(200, 200, 200)';
-              ctx.fillRect(0, 0, WIDTH, HEIGHT);
-        		  
-              processor.onaudioprocess = e => {
-        			    const left = e.inputBuffer.getChannelData(0); // This will contain the same amount of samples as the buffer size
-        			    const left16 = downsampleBuffer(left, 44100, 16000)
-        			    socket.emit('binaryData', left16);
-                  // Show analyzer 
-                  let barHeight;
-					        //analyser.getByteFrequencyData(dataArray);
-                  analyser.getFloatFrequencyData(dataArray);
-					        let sum = 0;
-					        let backFillOffset = 0;
-
-                  for(var i = 0; i < bufferLength; i++) {
-                      const minDb = analyser.minDecibels;
-                      const maxDb = analyser.maxDecibels;
-                      const freqScale = 1 / (maxDb - minDb);
-                      let scaledHeight = (freqScale * (dataArray[i] - minDb));
-                      sum += scaledHeight;
-                  }
-                    
-                  let scaledBarHeight = 25-(-(sum/bufferLength) * 30);
-                  ctx.fillStyle = 'rgb(80,150,220)';
-                  ctx.fillRect(x,(HEIGHT/2)-(scaledBarHeight/2),barWidth,scaledBarHeight);
-
-                  backFill.push(scaledBarHeight);
-
-                  if (backFillPosition > 0) { // Horizontal Scrolling
-                      let backFillWindow = backFill.slice(backFillPosition + backFillOffset);
-
-                    	for (var i = 0; i < backFillWindow.length; i++) {
-                    		  let backFillBarHeight = backFillWindow[i];
-                    		  ctx.fillStyle = 'rgb(200, 200, 200)';
-                			     ctx.fillRect(i, 0, WIDTH, HEIGHT);
-                    		  ctx.fillStyle = 'rgb(80,150,220)';
-                    		  ctx.fillRect(i,(HEIGHT/2)-(backFillBarHeight/2),barWidth,backFillBarHeight);
-                    	}
-                    	backFillOffset = backFillOffset+3;
-                    }
-
-                    if (backFill.length > (WIDTH/barWidth)) {
-                    	backFillPosition++;                	
-                    }
-                    else {
-                   		x += barWidth; 
-                    }    
-
-        		  };
-        	});
+                  navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                  }).then((stream) => this.processAudioStream(stream, context, analyser, processor));
+          })
         });
+      },
+      processAudioStream (stream, context, analyser, processor) {
+          this.audioStream = stream;
+          let input = context.createMediaStreamSource(stream);
+          this.input = input;
+          input.connect(processor);
+          // Link the audio to a waveform display
+          input.connect(analyser);       
+          analyser.fftSize = this.fftBufferSize;
+          let bufferLength = analyser.frequencyBinCount;
+          // let dataArray = new Uint8Array(bufferLength);
+          let dataArray = new Float32Array(bufferLength);
+
+          // Parameters for the graph
+          let backFill = [];
+          let backFillPosition = 0;
+          let canvasElement = document.getElementById('newRecordingCanvas')
+          let canvasWidth = canvasElement.parentNode.parentElement.clientWidth;
+          canvasElement.width = canvasWidth;
+          let HEIGHT = 150;
+          let WIDTH = canvasWidth;
+          let ctx = canvasElement.getContext("2d");
+          let barWidth = (WIDTH / bufferLength) * 2.5;
+          let countTo10 = 0;
+          let x = 0;
+          ctx.fillStyle = 'rgb(200, 200, 200)';
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+              
+          processor.onaudioprocess = e => {
+              const left = e.inputBuffer.getChannelData(0); // This will contain the same amount of samples as the buffer size
+              const left16 = downsampleBuffer(left, 44100, 16000)
+              this.socket.emit('binaryData', left16);
+              
+              // Render analyzer 
+              let barHeight;
+              //analyser.getByteFrequencyData(dataArray);
+              analyser.getFloatFrequencyData(dataArray);
+              let sum = 0;
+              let backFillOffset = 0;
+              for(var i = 0; i < bufferLength; i++) {
+                  const minDb = analyser.minDecibels;
+                  const maxDb = analyser.maxDecibels;
+                  const freqScale = 1 / (maxDb - minDb);
+                  let scaledHeight = (freqScale * (dataArray[i] - minDb));
+                  sum += scaledHeight;
+              }
+
+              let scaledBarHeight = 25-(-(sum/bufferLength) * 30);
+              ctx.fillStyle = 'rgb(80,150,220)';
+              ctx.fillRect(x,(HEIGHT/2)-(scaledBarHeight/2),barWidth,scaledBarHeight);
+              backFill.push(scaledBarHeight);
+
+              if (backFillPosition > 0) { // Horizontal Scrolling
+                  let backFillWindow = backFill.slice(backFillPosition + backFillOffset);
+
+                  for (var i = 0; i < backFillWindow.length; i++) {
+                      let backFillBarHeight = backFillWindow[i];
+                      ctx.fillStyle = 'rgb(200, 200, 200)';
+                       ctx.fillRect(i, 0, WIDTH, HEIGHT);
+                      ctx.fillStyle = 'rgb(80,150,220)';
+                      ctx.fillRect(i,(HEIGHT/2)-(backFillBarHeight/2),barWidth,backFillBarHeight);
+                  }
+                  backFillOffset = backFillOffset+3;
+              }
+
+              if (backFill.length > (WIDTH/barWidth)) {
+                backFillPosition++;                 
+              }
+              else {
+                x += barWidth; 
+              }    
+
+          };
       },
       toggleEdit(event, row, record) {
         event.stopPropagation()

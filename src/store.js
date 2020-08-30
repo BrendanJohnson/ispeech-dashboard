@@ -133,6 +133,7 @@ const store = new Vuex.Store({
       loggedIn: false,
       data: null
     },
+    speechSession: null,
     speechSessions: []
   },
   getters: {
@@ -147,6 +148,9 @@ const store = new Vuex.Store({
   	setSpeechSessions(state, value) {
   		state.speechSessions = value;
   	},
+    setSpeechSession(state, value) {
+      state.speechSession = value;
+    },
     setChildQuotes(state, value) {
         state.children = state.children.map(child=>{
             if(value) child.quotes.push(value)
@@ -177,12 +181,17 @@ const store = new Vuex.Store({
     }
   },
   actions: {
-  	async createSpeechSession({state, commit}, session) {
-  		await speechSessionsCollection.add({
-  			sessionId: 3,
-  			comments: "",
-  			createdOn: new Date()
-  		})
+  	async createSpeechSession({state, commit}) {
+      const ref = speechSessionsCollection.doc();
+      const id = ref.id;
+      const session = {
+        sessionId: id,
+        comments: "",
+        createdOn: new Date()
+      };
+  		await speechSessionsCollection.add(session).then(()=> {
+        return store.commit('setSpeechSession', session)
+      })
   	},
     async updateChild({state, commit}, child) {
       await childrenCollection
