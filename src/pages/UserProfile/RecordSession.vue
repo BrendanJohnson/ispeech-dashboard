@@ -1,27 +1,27 @@
 <template>
     <card>
-      	<h4 slot="header" class="card-title">
-        	New Session
-      	</h4>
+        <h4 slot="header" class="card-title">
+            New Session
+        </h4>
       	<div>
-      	   <div v-if="recordingNewSession" >
+      	 <div v-if="recordingNewSession" >
         		<canvas id="newRecordingCanvas" width="800" height="150"></canvas>
       		</div>
-          <input type="file" @change="processFile($event)">
+          <div v-if="processingSession" class="text-center">
+            <b-spinner variant="primary" label="Text Centered"></b-spinner>
+          </div>
       		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
       			<b-icon-pause-fill size="md" scale="1">
 	        	</b-icon-pause-fill>
 	        	Stop Recording
-
       		</b-button>
       		<b-button v-else @click="recordNewSession" variant="primary">
       			<b-icon-mic-fill size="md" scale="1">
 	        	</b-icon-mic-fill>
 	        	Start Recording
 	        </b-button>  
-          <b-button @click="testXmlGeneration" variant="primary">
-            
-            XML
+          <b-button class="float-right" @click="showXml" v-if="speechSession" variant="primary">
+            View XML
           </b-button>     	
       	</div>
       	<div id="annotations-table-container">
@@ -29,22 +29,6 @@
 
 	        </div>
 	        <b-table :filter="annotationsFilter" :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields">
-	            <template v-slot:cell(show_details)="row">
-	              <b-button :id="`popover-reactive-${row.index}`" variant="primary" ref="button">
-	                Details
-	              </b-button>
-	              <b-popover
-	                custom-class="hide-border"
-	                boundary="viewport"
-	                container="annotations-table-container"
-	                :target="`popover-reactive-${row.index}`"
-	                triggers="click"
-	                placement="right"
-	                ref="popover"
-	              >
-	                <img src="https://storage.googleapis.com/ispeech-bucket/EAF/trees/better_intelligibility_77.png" alt="">
-	              </b-popover>
-	            </template>
 	            <template v-slot:cell(transcript)="row">
 	            	<p v-if="row.item.alignable_id == editingRow">
 	            		<input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input>
@@ -81,7 +65,6 @@
   import io from 'socket.io-client'
   import * as tf from '@tensorflow/tfjs'
   import store from '../../store'
-  import eafUtil from '../../eafUtil'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
@@ -135,6 +118,7 @@
       	context: null,
         mic: null,
       	processor: null,
+        processingSession: false,
       	session: {
       		sessionId: 0
       	},
@@ -210,6 +194,7 @@
       let items = this.items;
 
       this.socket.on('timestampsResult', result => {
+         this.processingSession = false;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
          console.log(this.speechSession);
@@ -240,18 +225,7 @@
       this.socket.on('speechData', data => {
           // console.log(data.results[0].alternatives[0].transcript);
             var dataFinal = undefined || data.results[0].isFinal;
-
             speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;  
-             
-                //items[0].transcript = speechRecognitionResults.join(' ');
-
-           
-      })
-      this.socket.on('NLPData', data => {
-          console.log('RECEIVE NLP');
-          
-
-           
       })
     },
     computed: {
@@ -269,10 +243,8 @@
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
       },
-      testXmlGeneration() {
-        const json = '[{"speaker":"adult","startTime":0.128,"endTime":1.48},{"speaker":"adult","startTime":1.48,"endTime":3.044},{"speaker":"child","startTime":3.044,"endTime":6.72},{"speaker":"child","startTime":10.192,"endTime":13.652},{"speaker":"adult","startTime":13.652,"endTime":15.184},{"speaker":"child","startTime":15.184,"endTime":19.488}]';
-      
-        const xmlString = eafUtil.timestampsToXml(JSON.parse(json));
+      showXml() {
+          window.open(this.speechSession.manifestUrl, "_blank");
       },
       updateProfile () {
         alert('Your data: ' + JSON.stringify(this.user))
@@ -310,6 +282,8 @@
     		const track = this.audioStream.getTracks()[0];
         const processor = this.processor;
         const socket = this.socket;
+        this.recordingNewSession = false;
+        this.processingSession = true;
     		track.stop();
     		this.input.disconnect(processor);
     		processor.disconnect(context.destination);
