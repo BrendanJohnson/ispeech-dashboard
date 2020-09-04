@@ -306,11 +306,8 @@
       immediate: true,
       speechSessions(sessions) {
         if (sessions.length) {
-          let wavesurferIds = this.wavesurfers.map((x, i) => {
-            return x ? i : null
-          }).filter(x => { return x });
           sessions.forEach(session => {
-            if(wavesurferIds.indexOf(session.sessionId) == -1) {
+            if(!this.wavesurfers[session.sessionId]) {
               this.renderWavesurfer(session)
             }
             else {
