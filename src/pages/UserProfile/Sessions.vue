@@ -16,11 +16,11 @@
           <div class="row">
             <div class="col-6">
               <button class="btn btn-primary" @click="playMusic(session.sessionId)">
-              <i class="glyphicon glyphicon-play"></i>
-              Play
-              /
-              <i class="glyphicon glyphicon-pause"></i>
-              Pause
+                <i class="glyphicon glyphicon-play"></i>
+                Play
+                /
+                <i class="glyphicon glyphicon-pause"></i>
+                Pause
               </button>
             </div>
             <div class="col-6">
@@ -152,7 +152,7 @@
         duration: annotation && annotation.duration ? annotation.duration : 0,
         key: session.sessionId + '_' + alignable_id,
         alignable_id: alignable_id,
-        speaker: annotation ? ((annotation.speaker == 'child') ? session.child.name : 'Adult') : 'Unknown',
+        speaker: annotation ? ((annotation.speaker == 'child') ? (session.child ? session.child.name : 'Child') : 'Adult') : 'Unknown',
         isActive: true,
         sentiment: annotation && annotation.sentiment ? sentimentMapper(annotation.sentiment) : null,
         starred: annotation && annotation.starred,
@@ -359,6 +359,8 @@
 
           this.wavesurfers[session.sessionId] = WaveSurfer.create({
             container: container,
+             barWidth: 2,
+            barHeight: 1, // the height of the wave
             waveColor: '#409EFF',
             progressColor: 'blue',
             minPxPerSec: 10, // for scrolling
@@ -376,16 +378,17 @@
                 container: '#wave-timeline'
               }),
 
+              // Instead of creating the normal way, we're going to pass XML as a string
               Elan.create({
                   container: '#annotations',
                   url: session.manifestUrl,
-
-                  //url: 'https://storage.googleapis.com/ispeech-bucket/EAF/manifest.eaf.xml', 
+                  //url: 'https://storage.googleapis.com/ispeech-manifests/manifest2.xml', 
                   tiers: {
                       "Speaker": true,
                       "Transcript": true
                   }
               })
+
             ],
             xhr: {
                     cache: "default",
@@ -398,6 +401,8 @@
                     ]
                   }
           });
+
+
         // Proxy actually points to https://storage.googleapis.com/ispeech-bucket/raw_audio
         //  this.wavesurfers[session.sessionId].load('/audio/putonghua_030120_slice.mp3');
           this.wavesurfers[session.sessionId].load(session.audioUrl);
@@ -450,7 +455,8 @@
                       store.dispatch('updateAnnotation', { annotation: annotation, sessionId: session.sessionId })
                     }
 
-                    items.push(itemMapper(session, session.annotations[region.id], region.id));
+                    const item = itemMapper(session, session.annotations[region.id], region.id);
+                    items.push(item);
                   }
               }
             };
