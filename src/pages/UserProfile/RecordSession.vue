@@ -201,9 +201,12 @@
       let items = this.items;
 
       this.socket.on('timestampsResult', result => {
+        console.log('timestamp result')
+        console.log(result)
          this.processingSession = false;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
+         this.speechSession.timeline = result.timeline;
          console.log(this.speechSession);
          store.dispatch('updateSession',this.speechSession)
       });

@@ -1,5 +1,10 @@
 <template>
   <div v-if="speechSessions.length">
+    <b-pagination
+      v-model="currentPage"
+      :total-rows="rows"
+      aria-controls="my-table"
+    ></b-pagination>
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
@@ -22,14 +27,25 @@
                 <i class="glyphicon glyphicon-pause"></i>
                 Pause
               </button>
+              <button class="btn" @click="downloadCsv(session)">Download CSV</button>
+              <b-button v-b-modal="'upload-modal'">Upload CSV</b-button>
+
+              <!--Upload modal -->
+              <b-modal @ok="uploadCsv(session)" id="upload-modal">
+                <b-form-file v-model="uploadedCsv"></b-form-file>
+              </b-modal>
             </div>
             <div class="col-6">
+              <button class="btn btn-primary" @click="showXml(session.manifestUrl)">
+                 View XML
+              </button>
               <b-form-input v-model="annotationsFilter"  placeholder="Type to Search"></b-form-input>
             </div>
           </div>
       </div>
     <div class="row">
       <div class="col-12">
+
             <a v-b-toggle class="float-right" href="#example-collapse" @click.prevent>Session Statistics</a>
        
           </div>
@@ -129,8 +145,11 @@
   import SyntaxCanvas from 'src/components/Syntax/SyntaxCanvas.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
+
+  import parseCsv from 'csv-parse';
   import io from 'socket.io-client';
   import store from '../../store'
+  import timelineUtil from '../../timelineUtil'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
@@ -208,6 +227,7 @@
     },
     data () {
       return {
+        currentPage: 1,
       	editingRow: {},
         show: false,
         socket: null,
@@ -215,6 +235,7 @@
         speechRecognitionResults: [],
         speechRecognitionText: 'None',
         streamingAudio: false,
+        uploadedCsv: null,
         audioStream: null,
         annotationsFilter: '',
         wavesurfers: [],
@@ -300,7 +321,11 @@
     	}
     },
     computed: {
-      ...mapState(['speechSessions'])
+      ...mapState(['speechSessions']),
+      rows() {
+        return this.speechSessions.length
+      }
+    
     },
     watch: {
       immediate: true,
@@ -529,6 +554,44 @@
       	this.editingRow = {}
       	let annotation = { annotationId: row.item.alignable_id, starred: !!row.item.starred, transcript: row.item.transcript }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
+      },
+      downloadCsv(session) {
+        const items = session.timeline;
+        const replacer = (key, value) => value === null ? '' : value ;
+        const header = Object.keys(items[0])
+        let csv = items.map(row => header.map(fieldName => {
+          return (fieldName == 'transcript') ? '' : JSON.stringify(row[fieldName], replacer)
+        }).join(','))
+        csv.unshift(header.join(','))
+        csv = csv.join('\r\n')
+        
+        let anchor = document.createElement('a');
+        anchor.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+        anchor.target = '_blank';
+        anchor.download = 'session.csv';
+        anchor.click();
+
+      },
+      uploadCsv(session) {
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+            const json = parseCsv(evt.target.result,{
+                delimiter: ',',  columns: true
+            },
+            (err,json)=>{
+              console.log(json);
+              let xml = timelineUtil.toXml(json)
+              console.log(xml)
+            }) 
+        };
+        reader.onerror = function (evt) {
+                alert("An error ocurred reading the CSV file",evt);
+        };
+        reader.readAsText(this.uploadedCsv, "UTF-8");
+        
+      },
+      showXml(manifestUrl) {
+          window.open(manifestUrl, "_blank");
       },
       audioInput() {
       	const bufferSize = 2048;
