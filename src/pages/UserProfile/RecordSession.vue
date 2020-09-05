@@ -22,7 +22,13 @@
 	        </b-button>  
           <b-button class="float-right" @click="showXml" v-if="speechSession" variant="primary">
             View XML
-          </b-button>     	
+          </b-button>
+          <b-button v-b-modal="'upload-modal'">Upload Audio</b-button>
+
+          <!--Upload modal -->
+          <b-modal @ok="processFile" id="upload-modal">
+            <b-form-file v-model="uploadFile"></b-form-file>
+          </b-modal>
       	</div>
       	<div id="annotations-table-container">
 	        <div class="justify-content-center row">
@@ -63,12 +69,12 @@
   import { mapState } from 'vuex'
   import moment from 'moment'
   import io from 'socket.io-client'
-  import * as tf from '@tensorflow/tfjs'
   import store from '../../store'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
   import Timeline from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.js'
   import Elan from 'wavesurfer.js/dist/plugin/wavesurfer.elan.js'
+  import SocketIOFileUpload from 'socketio-file-upload';
 
   var downsampleBuffer = function (buffer, sampleRate, outSampleRate) {
       if (outSampleRate == sampleRate) {
@@ -128,6 +134,7 @@
         speechRecognitionResults: [],
         speechRecognitionText: 'None',
         streamingAudio: false,
+        uploadFile: null,
         audioStream: null,
         annotationsFilter: '',
         recordingNewSession: false,
@@ -301,39 +308,19 @@
         const waveformTensor = this.audioData.waveform;
         waveformTensor.print();
       },
-      processFile(event) {
-        const fftLength = 512;
-        const frameLength = 400;
-        const frameStep = 160;
-        const sampleRate = 16000;
-      
-        this.readBlob(event.target.files[0], buffer => {
-            const sourceAudioBuffer = buffer;
-            const left = sourceAudioBuffer.getChannelData(0);
-            const left16 = downsampleBuffer(left, 44100, sampleRate)
-            const data = new Float32Array(left16);
-            
-            // Use Tensorflow to perform sftf
-            console.time('fft')
-            const x = tf.tensor1d(data); //.reshape([-1, ...recognizer.modelInputShape().slice(1));
-            const stfts = tf.signal.stft(x, frameLength, frameStep, fftLength);
-            console.timeEnd('fft')
-           
-            const stftsMagnitude = tf.transpose(tf.abs(stfts))
-            const tensorData = stftsMagnitude.dataSync();
-          
-        });
-      },
-      readBlob(blob, cb) {
-        const reader = new FileReader();
-        const audioContext = new AudioContext();
-        reader.onload = function(ev) {
-            //reader.readAsArrayBuffer(ev.target.result).then(cb);
-            // Decode audio
-            audioContext.decodeAudioData(ev.target.result).then(cb);
-        };
-
-        reader.readAsArrayBuffer(blob);
+      processFile() {
+        const filename = this.uploadFile.name;
+        const uploader = new SocketIOFileUpload(this.socket);
+        uploader.addEventListener('complete', (data)=> {
+          store.dispatch('createSpeechSession').then((session)=> {
+            this.$nextTick(() => {
+                console.log(this.speechSession)
+                this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename });
+                this.processingSession = true;
+            })
+          })
+        })
+        uploader.submitFiles([this.uploadFile])
       },
       recordNewSession() {
           this.recordingStartTime = Date.now();
