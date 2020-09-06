@@ -1,5 +1,11 @@
 <template>
   <div v-if="speechSessions.length">
+    <b-modal @ok="handleUpdateTranscript" v-model="showUpdateTranscriptModal">
+      <p>
+        The data associated with this session has been updated from CSV. By clicking OK you will replace all Speaker/Transcript data with data from the CSV file, and overwrite any edits that have been made to the session details here. In order to see the updates you will need to refresh this page.
+      </p> 
+      <p>Do you wish to continue?</p>
+    </b-modal>
     <b-pagination
       v-model="currentPage"
       :total-rows="rows"
@@ -8,7 +14,17 @@
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
-
+        <b-button-group class="float-right">
+            <b-button class="btn-sm" @click="downloadCsv(session)">
+              Download CSV
+            </b-button>
+            <b-button class="btn-sm" v-b-modal="'upload-modal'">
+              Upload CSV
+            </b-button>
+            <b-button class="btn-sm" @click="showXml(session.manifestUrl)">
+              View XML
+            </b-button>
+        </b-button-group>
       </h4>
       <div :id="'waveform-session-' + session.sessionId" ref="waveform">
           <!-- Here be the waveform -->
@@ -27,8 +43,8 @@
                 <i class="glyphicon glyphicon-pause"></i>
                 Pause
               </button>
-              <button class="btn" @click="downloadCsv(session)">Download CSV</button>
-              <b-button v-b-modal="'upload-modal'">Upload CSV</b-button>
+
+             
 
               <!--Upload modal -->
               <b-modal @ok="uploadCsv(session)" id="upload-modal">
@@ -36,9 +52,6 @@
               </b-modal>
             </div>
             <div class="col-6">
-              <button class="btn btn-primary" @click="showXml(session.manifestUrl)">
-                 View XML
-              </button>
               <b-form-input v-model="annotationsFilter"  placeholder="Type to Search"></b-form-input>
             </div>
           </div>
@@ -57,9 +70,7 @@
         </div>
       </b-card>
     </b-collapse>
-         
-
-      <div id="annotations-table-container">
+    <div id="annotations-table-container">
         <div class="justify-content-center row">
 
         </div>
@@ -230,11 +241,13 @@
         currentPage: 1,
       	editingRow: {},
         show: false,
+        showUpdateTranscriptModal: false,
         socket: null,
         speechRecognitionBlock: 0,
         speechRecognitionResults: [],
         speechRecognitionText: 'None',
         streamingAudio: false,
+        updateModalSessionId: null,
         uploadedCsv: null,
         audioStream: null,
         annotationsFilter: '',
@@ -314,6 +327,19 @@
                 speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;              
                 that.editingRow.transcript = speechRecognitionResults.join(' ');         
             }
+      })
+
+      this.socket.on('updatedTranscript', data => {
+          this.showUpdateTranscriptModal = true;
+          this.updateModalSessionId = data.sessionId;
+          this.speechSessions = this.speechSessions.map(session => {
+            if(session.sessionId == this.updateModalSessionId) {
+                session.timeline = data.timeline
+            }
+            return session
+          });
+          console.log('updated transcript')
+          console.log(this.speechSessions)
       })
 
     	if (this.speechSessions.length) {
@@ -541,6 +567,12 @@
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         return row;
       },
+      handleUpdateTranscript() {
+          console.log('clear for: ' +  this.updateModalSessionId)
+          let session = this.speechSessions.filter(session => session.sessionId == this.updateModalSessionId)[0]
+          store.dispatch('clearAnnotations', session);
+          store.dispatch('updateSession', session) 
+      },
       scrollToRow(key, sessionId) {
         var container = this.$refs.annotationsTable.filter(item => {
             return item.id == 'annotations-session-' + sessionId 
@@ -574,14 +606,14 @@
       },
       uploadCsv(session) {
         const reader = new FileReader();
+        let socket = this.socket;
         reader.onload = function (evt) {
             const json = parseCsv(evt.target.result,{
                 delimiter: ',',  columns: true
             },
             (err,json)=>{
-              console.log(json);
-              let xml = timelineUtil.toXml(json)
-              console.log(xml)
+              console.log('emitting json');
+              socket.emit('updateTranscript', { sessionId: session.sessionId, timeline: json });
             }) 
         };
         reader.onerror = function (evt) {

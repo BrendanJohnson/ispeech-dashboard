@@ -44,7 +44,7 @@ const annotationNlpMapper = (annotation, nlp) => {
   })
 }
 
-speechSessionsCollection.orderBy('createdOn', 'desc').onSnapshot(snapshot => {
+speechSessionsCollection.orderBy('createdOn', 'desc').limit(5).onSnapshot(snapshot => {
  	Promise.all(snapshot.docs.map(doc => {
     	let session = doc.data()
    		session.id = doc.id
@@ -214,6 +214,21 @@ const store = new Vuex.Store({
                         })
                     })
                 })
+    },
+    async clearAnnotations({state, commit}, data) {
+      console.log('clearing annotations')
+      await speechSessionsCollection
+            .where("sessionId", "==", data.sessionId)
+            .get()
+            .then(docs => {
+              docs.forEach(doc => {
+                let snapshot = speechSessionsCollection.doc(doc.id).collection('annotations').get().then((annotationDocs)=> {
+                    annotationDocs.forEach(annotationDoc=> {
+                        annotationDoc.ref.delete()
+                    })
+                });   
+              })
+            })
     },
     async updateAnnotation({state, commit}, data) {
       await speechSessionsCollection
