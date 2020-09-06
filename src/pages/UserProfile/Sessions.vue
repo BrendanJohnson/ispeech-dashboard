@@ -247,7 +247,7 @@
         speechRecognitionResults: [],
         speechRecognitionText: 'None',
         streamingAudio: false,
-        updateModalSessionId: null,
+        updateModalSession: null,
         uploadedCsv: null,
         audioStream: null,
         annotationsFilter: '',
@@ -330,16 +330,15 @@
       })
 
       this.socket.on('updatedTranscript', data => {
-          this.showUpdateTranscriptModal = true;
-          this.updateModalSessionId = data.sessionId;
-          this.speechSessions = this.speechSessions.map(session => {
-            if(session.sessionId == this.updateModalSessionId) {
-                session.timeline = data.timeline
-            }
-            return session
-          });
+
           console.log('updated transcript')
-          console.log(this.speechSessions)
+          this.showUpdateTranscriptModal = true;
+          this.updateModalSession = {
+                sessionId: data.sessionId,
+                timeline: data.timeline,
+                manifestUrl: 'https://storage.googleapis.com/ispeech-manifests/' + data.manifest
+          };
+
       })
 
     	if (this.speechSessions.length) {
@@ -568,10 +567,10 @@
         return row;
       },
       handleUpdateTranscript() {
-          console.log('clear for: ' +  this.updateModalSessionId)
-          let session = this.speechSessions.filter(session => session.sessionId == this.updateModalSessionId)[0]
-          store.dispatch('clearAnnotations', session);
-          store.dispatch('updateSession', session) 
+          console.log('clear for: ');
+          console.log(this.updateModalSession)
+          store.dispatch('updateSession', this.updateModalSession) 
+          store.dispatch('clearAnnotations', this.updateModalSession);
       },
       scrollToRow(key, sessionId) {
         var container = this.$refs.annotationsTable.filter(item => {
@@ -613,7 +612,7 @@
             },
             (err,json)=>{
               console.log('emitting json');
-              socket.emit('updateTranscript', { sessionId: session.sessionId, timeline: json });
+              socket.emit('updateTranscript', { existingManifestName: session.manifestUrl.match(/[^/\\&\?]+\.\w{3,4}(?=([\?&].*$|$))/)[0], sessionId: session.sessionId, timeline: json });
             }) 
         };
         reader.onerror = function (evt) {
