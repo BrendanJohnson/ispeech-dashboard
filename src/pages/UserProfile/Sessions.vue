@@ -1,5 +1,11 @@
 <template>
   <div v-if="speechSessions.length">
+    <b-modal id="delete-modal" @ok="handleDeleteSession">
+        <p>
+          This action will delete the session permanently.
+        </p> 
+        <p>Do you wish to continue?</p>
+    </b-modal>
     <b-modal @ok="handleUpdateTranscript" v-model="showUpdateTranscriptModal">
       <p>
         The data associated with this session has been updated from CSV. By clicking OK you will replace all Speaker/Transcript data with data from the CSV file, and overwrite any edits that have been made to the session details here. In order to see the updates you will need to refresh this page.
@@ -23,6 +29,9 @@
             </b-button>
             <b-button class="btn-sm" @click="showXml(session.manifestUrl)">
               View XML
+            </b-button>
+            <b-button class="btn-sm" v-b-modal="'delete-modal'" @click="sessionToDelete = session">
+              Delete
             </b-button>
         </b-button-group>
       </h4>
@@ -240,6 +249,7 @@
       return {
         currentPage: 1,
       	editingRow: {},
+        sessionToDelete: {},
         show: false,
         showUpdateTranscriptModal: false,
         socket: null,
@@ -565,6 +575,9 @@
         const tbody = container.$el.querySelector('tbody')
         const row = tbody.querySelectorAll('tr[data-pk="' + key + '"]')[0];
         return row;
+      },
+      handleDeleteSession() {
+        store.dispatch('deleteSession', this.sessionToDelete);  
       },
       handleUpdateTranscript() {
           console.log('clear for: ');

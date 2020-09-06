@@ -44,7 +44,7 @@ const annotationNlpMapper = (annotation, nlp) => {
   })
 }
 
-speechSessionsCollection.orderBy('createdOn', 'desc').limit(5).onSnapshot(snapshot => {
+speechSessionsCollection.orderBy('createdOn', 'desc').limit(4).onSnapshot(snapshot => {
  	Promise.all(snapshot.docs.map(doc => {
     	let session = doc.data()
    		session.id = doc.id
@@ -146,7 +146,7 @@ const store = new Vuex.Store({
       state.children = value;
     },
   	setSpeechSessions(state, value) {
-  		state.speechSessions = [value[0]];
+  		state.speechSessions = value;
   	},
     setSpeechSession(state, value) {
       state.speechSession = value;
@@ -209,6 +209,8 @@ const store = new Vuex.Store({
                 .get()
                 .then(docs => {
                     docs.forEach(doc => {
+                        console.log('found doc')
+                        console.log(doc.ref);
                         doc.ref.update(data).then(()=>{
                             store.commit('setSpeechSession', data);
                         })
@@ -228,6 +230,20 @@ const store = new Vuex.Store({
                     })
                 });   
               })
+            })
+    },
+    async deleteSession({state, commit}, data) {
+      await speechSessionsCollection
+            .where("sessionId", "==", data.sessionId)
+            .get()
+            .then(docs=> {
+                docs.forEach(doc => {
+                  doc.ref.delete().then(()=> {
+                      console.log('doc deleted')
+
+                  })
+  
+                })
             })
     },
     async updateAnnotation({state, commit}, data) {
