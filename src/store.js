@@ -67,7 +67,7 @@ speechSessionsCollection.orderBy('createdOn', 'desc').limit(4).onSnapshot(snapsh
                   }
                   if ((annotationData.speaker == 'adult') && annotationData.duration) {
                     adultSpeechDuration += annotationData.duration;
-                    adultTranscriptWords += annotationData.transcript.length
+                    adultTranscriptWords += annotationData.transcript ? annotationData.transcript.length : 0;
                     adultNoOfTurns++
                   }
                   if (annotationData.tagCounts) {
