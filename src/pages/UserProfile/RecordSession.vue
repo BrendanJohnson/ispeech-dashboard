@@ -192,7 +192,9 @@
       }
     },
     mounted() {
-    	this.socket = io.connect('localhost:3000');
+      console.log('Establishing socket connection with: ' + process.env.VUE_APP_API_URL);
+
+    	this.socket = io.connect(process.env.VUE_APP_API_URL);
       let removeLastSentence = true;
       //let speechResults = this.speechRecognitionText;
       let speechRecognitionResults = this.speechRecognitionResults;
@@ -207,7 +209,6 @@
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
          this.speechSession.timeline = result.timeline;
-         console.log(this.speechSession);
          store.dispatch('updateSession',this.speechSession)
       });
 

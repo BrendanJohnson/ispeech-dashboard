@@ -317,7 +317,7 @@
       }
     },
     mounted() {
-    	this.socket = io.connect('localhost:3000');
+    	this.socket = io.connect(process.env.VUE_APP_API_URL);
       let removeLastSentence = true;
       //let speechResults = this.speechRecognitionText;
       let speechRecognitionResults = this.speechRecognitionResults;

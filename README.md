@@ -23,7 +23,9 @@ The repo uses [vue-cli](https://github.com/vuejs/vue-cli) scaffolding which take
 `gcloud builds submit --tag gcr.io/ispeech-brendan/ispeech-dashboard`
 
 ### Deploy build to Google Cloud Run
-`gcloud run deploy --image gcr.io/ispeech-brendan/ispeech-dashboard --platform managed --region us-central1`
+`gcloud run deploy --image gcr.io/ispeech-brendan/ispeech-dashboard --platform managed --region us-central1 --update-env-vars VUE_APP_API_URL={SocketServerUrl}`
+
+Here the placeholder {SocketServerUrl} points to the URL that the ispeech-socket-server is hosted on. This is needed in order to connect to the backend.
 
 ## :cloud: Cloud Bucket configuration
 In order to access XML manifests stored in Google Cloud, CORS needs to be setup on the GCS bucket.
