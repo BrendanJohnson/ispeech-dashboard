@@ -8,7 +8,7 @@
         <p>Do you wish to continue?</p>
     </b-modal>
     <!-- Upload modal -->
-    <b-modal @ok="uploadCsv(session)" id="upload-modal">
+    <b-modal @ok="uploadCsv()" id="upload-modal">
         <b-form-file v-model="uploadedCsv"></b-form-file>
     </b-modal>
     <!-- Confirm update modal -->
@@ -27,8 +27,8 @@
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
             <b-dropdown class="float-right" id="view-data-dropdown" size="sm" text="Advanced">
-              <b-dropdown-item @click="downloadCsv(session)">Download CSV</b-dropdown-item>
-              <b-dropdown-item v-b-modal="'upload-modal'">Upload CSV</b-dropdown-item>
+              <b-dropdown-item @click="downloadCsv(session.timelineUrl)">Download CSV</b-dropdown-item>
+              <b-dropdown-item @click="sessionToUpdate = session" v-b-modal="'upload-modal'">Upload CSV</b-dropdown-item>
               <b-dropdown-item @click="showFileInNewWindow(session.manifestUrl)">View XML</b-dropdown-item>
               <b-dropdown-item @click="showFileInNewWindow(session.timelineUrl)">View JSON</b-dropdown-item>
               <b-dropdown-item v-b-modal="'delete-modal'" @click="sessionToDelete = session">Delete Session
@@ -243,6 +243,7 @@
         currentPage: 1,
       	editingRow: {},
         sessionToDelete: {},
+        sessionToUpdate: {},
         show: false,
         showUpdateTranscriptModal: false,
         socket: null,
@@ -338,7 +339,7 @@
           this.showUpdateTranscriptModal = true;
           this.updateModalSession = {
                 sessionId: data.sessionId,
-                timeline: data.timeline,
+                timelineUrl:  'https://storage.googleapis.com/ispeech-manifests/' + data.timeline,
                 manifestUrl: 'https://storage.googleapis.com/ispeech-manifests/' + data.manifest
           };
 
@@ -592,8 +593,9 @@
       	let annotation = { annotationId: row.item.alignable_id, starred: !!row.item.starred, transcript: row.item.transcript }
         store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
       },
-      downloadCsv(session) {
-        const items = session.timeline;
+      async downloadCsv(timelineUrl) {
+        const response = await fetch(timelineUrl)
+        const items = await response.json();
         const replacer = (key, value) => value === null ? '' : value ;
         const header = Object.keys(items[0])
         let csv = items.map(row => header.map(fieldName => {
@@ -609,23 +611,27 @@
         anchor.click();
 
       },
-      uploadCsv(session) {
+      uploadCsv() {
         const reader = new FileReader();
-        let socket = this.socket;
+        const session = this.sessionToUpdate;
+        const socket = this.socket;
         reader.onload = function (evt) {
             const json = parseCsv(evt.target.result,{
                 delimiter: ',',  columns: true
             },
             (err,json)=>{
-              console.log('emitting json');
-              socket.emit('updateTranscript', { existingManifestName: session.manifestUrl.match(/[^/\\&\?]+\.\w{3,4}(?=([\?&].*$|$))/)[0], sessionId: session.sessionId, timeline: json });
+              const updateObject = {
+                existingManifestName: session.manifestUrl.match(/[^/\\&\?]+\.\w{3,4}(?=([\?&].*$|$))/)[0],
+                existingTimelineName: session.timelineUrl.match(/[^/\\&\?]+\.\w{3,4}(?=([\?&].*$|$))/)[0],
+                sessionId: session.sessionId,
+                timeline: json };
+              socket.emit('updateTranscript', updateObject);
             }) 
         };
         reader.onerror = function (evt) {
                 alert("An error ocurred reading the CSV file",evt);
         };
         reader.readAsText(this.uploadedCsv, "UTF-8");
-        
       },
       showFileInNewWindow(url) {
           window.open(url, "_blank");
