@@ -208,7 +208,7 @@
          this.processingSession = false;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
-         this.speechSession.timeline = result.timeline;
+         this.speechSession.timelineUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.timeline;
          store.dispatch('updateSession',this.speechSession)
       });
 

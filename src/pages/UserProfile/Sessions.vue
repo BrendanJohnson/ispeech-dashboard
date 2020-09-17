@@ -1,11 +1,17 @@
 <template>
   <div v-if="speechSessions.length">
+    <!-- Delete modal -->
     <b-modal id="delete-modal" @ok="handleDeleteSession">
         <p>
           This action will delete the session permanently.
         </p> 
         <p>Do you wish to continue?</p>
     </b-modal>
+    <!-- Upload modal -->
+    <b-modal @ok="uploadCsv(session)" id="upload-modal">
+        <b-form-file v-model="uploadedCsv"></b-form-file>
+    </b-modal>
+    <!-- Confirm update modal -->
     <b-modal @ok="handleUpdateTranscript" v-model="showUpdateTranscriptModal">
       <p>
         The data associated with this session has been updated from CSV. By clicking OK you will replace all Speaker/Transcript data with data from the CSV file, and overwrite any edits that have been made to the session details here. In order to see the updates you will need to refresh this page.
@@ -20,20 +26,14 @@
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
-        <b-button-group class="float-right">
-            <b-button class="btn-sm" @click="downloadCsv(session)">
-              Download CSV
-            </b-button>
-            <b-button class="btn-sm" v-b-modal="'upload-modal'">
-              Upload CSV
-            </b-button>
-            <b-button class="btn-sm" @click="showXml(session.manifestUrl)">
-              View XML
-            </b-button>
-            <b-button class="btn-sm" v-b-modal="'delete-modal'" @click="sessionToDelete = session">
-              Delete
-            </b-button>
-        </b-button-group>
+            <b-dropdown class="float-right" id="view-data-dropdown" size="sm" text="Advanced">
+              <b-dropdown-item @click="downloadCsv(session)">Download CSV</b-dropdown-item>
+              <b-dropdown-item v-b-modal="'upload-modal'">Upload CSV</b-dropdown-item>
+              <b-dropdown-item @click="showFileInNewWindow(session.manifestUrl)">View XML</b-dropdown-item>
+              <b-dropdown-item @click="showFileInNewWindow(session.timelineUrl)">View JSON</b-dropdown-item>
+              <b-dropdown-item v-b-modal="'delete-modal'" @click="sessionToDelete = session">Delete Session
+              </b-dropdown-item>
+            </b-dropdown>   
       </h4>
       <div :id="'waveform-session-' + session.sessionId" ref="waveform">
           <!-- Here be the waveform -->
@@ -52,13 +52,6 @@
                 <i class="glyphicon glyphicon-pause"></i>
                 Pause
               </button>
-
-             
-
-              <!--Upload modal -->
-              <b-modal @ok="uploadCsv(session)" id="upload-modal">
-                <b-form-file v-model="uploadedCsv"></b-form-file>
-              </b-modal>
             </div>
             <div class="col-6">
               <b-form-input v-model="annotationsFilter"  placeholder="Type to Search"></b-form-input>
@@ -634,8 +627,8 @@
         reader.readAsText(this.uploadedCsv, "UTF-8");
         
       },
-      showXml(manifestUrl) {
-          window.open(manifestUrl, "_blank");
+      showFileInNewWindow(url) {
+          window.open(url, "_blank");
       },
       audioInput() {
       	const bufferSize = 2048;
