@@ -4,11 +4,14 @@
             New Session
         </h4>
       	<div>
-      	 <div v-if="recordingNewSession" >
+      	 <div v-if="recordingNewSession">
         		<canvas id="newRecordingCanvas" width="800" height="150"></canvas>
       		</div>
-          <div v-if="processingSession" class="text-center">
-            <b-spinner variant="primary" label="Text Centered"></b-spinner>
+          <div v-if="processingRecording" class="text-center">
+              <b-spinner variant="primary" label="Text Centered"></b-spinner>
+          </div>
+          <div v-if="processingSession && audioProgressMax" class="text-center">
+             <b-progress :value="audioProgress" :max="audioProgressMax" show-progress animated></b-progress>   
           </div>
       		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
       			<b-icon-pause-fill size="md" scale="1">
@@ -64,7 +67,7 @@
     </card>
 </template>
 <script>
-  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill } from 'bootstrap-vue'
+  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill, BProgress } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
@@ -118,12 +121,15 @@
     data () {
       return {
         audioData: null,
+        audioProgress: 0,
+        audioProgressMax: null,
       	editingRow: null,
         fftBufferSize: 512, //2048;
       	input: null,
       	context: null,
         mic: null,
       	processor: null,
+        processingRecording: false,
         processingSession: false,
       	session: {
       		sessionId: 0
@@ -205,11 +211,20 @@
       this.socket.on('timestampsResult', result => {
         console.log('timestamp result')
         console.log(result)
+         this.processingRecording = false;
          this.processingSession = false;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
          this.speechSession.timelineUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.timeline;
          store.dispatch('updateSession',this.speechSession)
+      });
+
+      this.socket.on('audioProcessingStart', data=> {
+        this.audioProgressMax = data.numberOfFiles + 1;
+      })
+
+      this.socket.on('audioProcessingProgress', data => {
+        this.audioProgress = data.filesProcessed + 1;
       });
 
       this.socket.on('nextBlock', data => {
@@ -294,7 +309,7 @@
         const processor = this.processor;
         const socket = this.socket;
         this.recordingNewSession = false;
-        this.processingSession = true;
+        this.processingRecording = true;
     		track.stop();
     		this.input.disconnect(processor);
     		processor.disconnect(context.destination);
