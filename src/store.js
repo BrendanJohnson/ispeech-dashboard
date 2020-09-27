@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { childrenCollection, speechSessionsCollection } from "./firebase"
+import { childrenCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
 
@@ -44,77 +44,81 @@ const annotationNlpMapper = (annotation, nlp) => {
   })
 }
 
-speechSessionsCollection.orderBy('createdOn', 'desc').limit(4).onSnapshot(snapshot => {
- 	Promise.all(snapshot.docs.map(doc => {
-    	let session = doc.data()
-   		session.id = doc.id
-      return speechSessionsCollection.doc(doc.id).collection('annotations').get().then(annotationSnapshot => {
-              var annotations = {}
-              var adultSpeechDuration = 0
-              var childSpeechDuration = 0
-              var adultNoOfTurns = 0
-              var childNoOfTurns = 0
-              var adultTranscriptWords = 0
-              var childTranscriptWords = 0
-              var tagTotals = {};
+const onSpeechSnapshot= snapshot => {
+                                const lastVisible = snapshot.docs[snapshot.docs.length-1];
+                                store.commit('setPagination', { next: lastVisible })
 
-              annotationSnapshot.forEach(annotationDoc => {
-                  let annotationData = annotationNlpMapper(annotationDoc.data(), annotationDoc.data().nlp);
-                  if ((annotationData.speaker == 'child') && annotationData.duration) {
-                    childSpeechDuration += annotationData.duration
-                    childTranscriptWords += annotationData.transcript.length
-                    childNoOfTurns++
-                  }
-                  if ((annotationData.speaker == 'adult') && annotationData.duration) {
-                    adultSpeechDuration += annotationData.duration;
-                    adultTranscriptWords += annotationData.transcript ? annotationData.transcript.length : 0;
-                    adultNoOfTurns++
-                  }
-                  if (annotationData.tagCounts) {
-                    for (let [key, value] of Object.entries(annotationData.tagCounts)) { 
-                        if (tagTotals[key]) { //(4)
-                          tagTotals[key] += value; //(5)
-                        } else { //(6)
-                          tagTotals[key] = value;
-                        }
-                    }
-                  }
-                  annotations[annotationData.annotationId] = annotationData
-              });
+                                Promise.all(snapshot.docs.map(doc => {
+                                    let session = doc.data()
+                                    session.id = doc.id
+                                    return speechSessionsCollection.doc(doc.id).collection('annotations').get().then(annotationSnapshot => {
+                                            var annotations = {}
+                                            var adultSpeechDuration = 0
+                                            var childSpeechDuration = 0
+                                            var adultNoOfTurns = 0
+                                            var childNoOfTurns = 0
+                                            var adultTranscriptWords = 0
+                                            var childTranscriptWords = 0
+                                            var tagTotals = {};
 
-              session.adultSpeechDuration = adultSpeechDuration
-              session.adultNoOfTurns = adultNoOfTurns
-              session.adultTranscriptWords = adultTranscriptWords
-              session.childSpeechDuration = childSpeechDuration
-              session.childNoOfTurns = childNoOfTurns
-              session.childTranscriptWords = childTranscriptWords
-              session.tagTotals = tagTotals
-              session.totalSpeechDuration = adultSpeechDuration + childSpeechDuration
-              session.totalNoOfTurns = adultNoOfTurns + childNoOfTurns
-              session.totalTranscriptWords = adultTranscriptWords + childTranscriptWords
-              session.annotations = annotations
-              return session;
-      })
-  	})).then(sessions => {
-      childrenCollection.onSnapshot(snapshot => {
-        Promise.all(snapshot.docs.map(doc => {
-            let child = doc.data()
-            child.quotes = []
-            return child
-          })).then(children => {
-            sessions = sessions.map(session=>{
-                session.child = children.filter(child=>{
-                  return child.id == session.childId;
-                })[0];
-                return session;
-            }).filter(session=>{
-                return !session.deleted;
-            })
-            store.commit('setSpeechSessions', sessions)
-          });
-      })
-    })
-})
+                                            annotationSnapshot.forEach(annotationDoc => {
+                                                let annotationData = annotationNlpMapper(annotationDoc.data(), annotationDoc.data().nlp);
+                                                if ((annotationData.speaker == 'child') && annotationData.duration) {
+                                                  childSpeechDuration += annotationData.duration
+                                                  childTranscriptWords += annotationData.transcript.length
+                                                  childNoOfTurns++
+                                                }
+                                                if ((annotationData.speaker == 'adult') && annotationData.duration) {
+                                                  adultSpeechDuration += annotationData.duration;
+                                                  adultTranscriptWords += annotationData.transcript ? annotationData.transcript.length : 0;
+                                                  adultNoOfTurns++
+                                                }
+                                                if (annotationData.tagCounts) {
+                                                  for (let [key, value] of Object.entries(annotationData.tagCounts)) { 
+                                                      if (tagTotals[key]) { //(4)
+                                                        tagTotals[key] += value; //(5)
+                                                      } else { //(6)
+                                                        tagTotals[key] = value;
+                                                      }
+                                                  }
+                                                }
+                                                annotations[annotationData.annotationId] = annotationData
+                                            });
+
+                                            session.adultSpeechDuration = adultSpeechDuration
+                                            session.adultNoOfTurns = adultNoOfTurns
+                                            session.adultTranscriptWords = adultTranscriptWords
+                                            session.childSpeechDuration = childSpeechDuration
+                                            session.childNoOfTurns = childNoOfTurns
+                                            session.childTranscriptWords = childTranscriptWords
+                                            session.tagTotals = tagTotals
+                                            session.totalSpeechDuration = adultSpeechDuration + childSpeechDuration
+                                            session.totalNoOfTurns = adultNoOfTurns + childNoOfTurns
+                                            session.totalTranscriptWords = adultTranscriptWords + childTranscriptWords
+                                            session.annotations = annotations
+                                            session.loaded = false;
+                                            return session;
+                                    })
+                                  })).then(sessions => {
+                                    childrenCollection.onSnapshot(snapshot => {
+                                      Promise.all(snapshot.docs.map(doc => {
+                                          let child = doc.data()
+                                          child.quotes = []
+                                          return child
+                                        })).then(children => {
+                                          sessions = sessions.map(session=>{
+                                              session.child = children.filter(child=>{
+                                                return child.id == session.childId;
+                                              })[0];
+                                              return session;
+                                          }).filter(session=>{
+                                              return !session.deleted;
+                                          })
+                                          store.commit('setSpeechSessions', sessions)
+                                        });
+                                    })
+                                  });
+                                }
 
 childrenCollection.onSnapshot(snapshot => {
   Promise.all(snapshot.docs.map(doc => {
@@ -129,14 +133,22 @@ childrenCollection.onSnapshot(snapshot => {
 const store = new Vuex.Store({
   state: {
     children: [],
+    lastVisible: null,
     user: {
       loggedIn: false,
       data: null
     },
+    speechSessionPagination: { currentPage: 1, next: null, limit: 5 },
     speechSession: null,
     speechSessions: []
   },
   getters: {
+    getPagination: (state) => {
+      return state.speechSessionPagination
+    },
+    getSpeechSessionsPaginated: (state) => {
+      return state.speechSessions
+    },
     user(state){
       return state.user
     }
@@ -173,6 +185,9 @@ const store = new Vuex.Store({
         //     return child
         // })
     },
+    setPagination(state, value) {
+      state.speechSessionPagination = value;
+    },
     SET_LOGGED_IN(state, value) {
       state.user.loggedIn = value;
     },
@@ -193,6 +208,38 @@ const store = new Vuex.Store({
         return store.commit('setSpeechSession', session)
       })
   	},
+    async loadSpeechSessions({state, commit}, { limit, next, search }) {
+    
+      //const search = "我哋比賽呢";
+      console.log('LOADING speech sessions')
+      console.log(search)
+      console.log(next)
+
+      if (search) {  
+          annotationsCollection.where("transcript", "==", search).get().then(function (querySnapshot) {
+              let docIds = [];
+              querySnapshot.forEach(function (doc) {
+                  docIds.push(doc.ref.parent.parent.id);
+              });
+
+              return docIds.slice(0,9); // Only return 10 docIds max
+          }).then((docIds)=>{
+              console.log('GOT DOCIDS');
+              console.log(docIds);
+              speechSessionsCollection.where('__name__', 'in', docIds)
+                                      .onSnapshot(onSpeechSnapshot)
+          })
+      }
+      else {
+          (next ? speechSessionsCollection.orderBy('createdOn', 'desc')
+                                          .startAfter(next)
+                                          .limit(limit)
+                : speechSessionsCollection.orderBy('createdOn', 'desc')
+                                           .limit(limit))
+          .onSnapshot(onSpeechSnapshot);
+      }
+      
+    },
     async updateChild({state, commit}, child) {
       await childrenCollection
               .where("id", "==", child.id)

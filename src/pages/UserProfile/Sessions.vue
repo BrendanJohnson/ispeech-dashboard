@@ -18,11 +18,7 @@
       </p> 
       <p>Do you wish to continue?</p>
     </b-modal>
-    <b-pagination
-      v-model="currentPage"
-      :total-rows="rows"
-      aria-controls="my-table"
-    ></b-pagination>
+
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
@@ -71,12 +67,12 @@
         <p v-for="(count, tag) in session.tagTotals">{{tag}}: {{count}}</p>
         </div>
       </b-card>
-    </b-collapse>
+      </b-collapse>
     <div id="annotations-table-container">
         <div class="justify-content-center row">
 
         </div>
-        <b-table :filter="annotationsFilter" :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
+        <b-table  v-if="session.loaded" :filter="annotationsFilter" :id="'annotations-session-' + session.sessionId" ref="annotationsTable" primary-key="key" sticky-header striped hover :items="items[session.sessionId]" :fields="fields" @row-clicked="row=>clickRow(row, session.sessionId)">
             <template v-slot:cell(transcript)="row">
             		<p v-if="row.item.alignable_id == editingRow.alignable_id"><input v-model="row.item.transcript"  @blur="saveTranscriptRow(row, session.sessionId)"></input></p>
             		<p v-else>{{row.item.transcript}}</p>
@@ -156,7 +152,7 @@
   import SyntaxArrow from 'src/components/Syntax/SyntaxArrow.vue'
   import SyntaxBox from 'src/components/Syntax/SyntaxBox.vue'
   import SyntaxCanvas from 'src/components/Syntax/SyntaxCanvas.vue'
-  import { mapState } from 'vuex'
+  import { mapGetters, mapState } from 'vuex'
   import moment from 'moment'
 
   import parseCsv from 'csv-parse';
@@ -178,6 +174,7 @@
 
   const itemMapper = (session, annotation, alignable_id) => {
       return {
+        sessionId: session.sessionId,
         transcript: annotation && annotation.transcript ? annotation.transcript : null,
         start_time: annotation && annotation.start ? annotation.start : 'N/A',
         end_time: annotation && annotation.end ? annotation.end : 'N/A',
@@ -238,9 +235,11 @@
       SyntaxBox,
       SyntaxCanvas
     },
+    created () {
+      store.dispatch('loadSpeechSessions', { limit: 5,  search: "" })
+    },
     data () {
       return {
-        currentPage: 1,
       	editingRow: {},
         sessionToDelete: {},
         sessionToUpdate: {},
@@ -293,8 +292,7 @@
             sortable: false
           }
         ],
-        items: [
-        ],
+        items: {},
         syntaxValues: [],
         user: {
           company: 'Light dashboard',
@@ -334,8 +332,6 @@
       })
 
       this.socket.on('updatedTranscript', data => {
-
-          console.log('updated transcript')
           this.showUpdateTranscriptModal = true;
           this.updateModalSession = {
                 sessionId: data.sessionId,
@@ -350,7 +346,7 @@
     	}
     },
     computed: {
-      ...mapState(['speechSessions']),
+      ...mapGetters({ speechSessionPagination: 'getPagination', speechSessions: 'getSpeechSessionsPaginated' }),
       rows() {
         return this.speechSessions.length
       }
@@ -362,10 +358,13 @@
         if (sessions.length) {
           sessions.forEach(session => {
             if(!this.wavesurfers[session.sessionId]) {
+              console.log('CREATE NEW')
+              console.log(session)
               this.renderWavesurfer(session)
             }
             else {
-              this.items = this.items.map(item => {
+              console.log('UPDATING NEW')
+              this.items[session.sessionId] = this.items[session.sessionId].map(item => {
                 return itemMapper(session, session.annotations[item.alignable_id], item.alignable_id);
               })
             }
@@ -407,6 +406,11 @@
           var container = this.$refs.waveform.filter(item => {
             return item.id == 'waveform-session-' + session.sessionId 
           })[0];
+          console.log('CREATING WAVESURFER FOR: ' + session.sessionId);
+          // Create empty session
+          if (!this.items[session.sessionId]) {
+            this.items[session.sessionId] = [];
+          }
 
           this.wavesurfers[session.sessionId] = WaveSurfer.create({
             container: container,
@@ -464,7 +468,8 @@
             wavesurfer.backend.play(start, end);
           });
 
-          var elanReadyFactory = function(wavesurfer, items) {
+          var elanReadyFactory = function(wavesurfer, tableItems) {
+           console.log('RUNNING ELAN READY FACTORY')
             return function() {
               for (var i = 0; i <= wavesurfer.elan.renderedAlignable.length; i++) {
                   var region = wavesurfer.elan.renderedAlignable[i]
@@ -477,7 +482,7 @@
                                   drag: false,
                                   color: (region.value == 'adult') ? 'rgba(29, 200, 234, 0.3)' : 'rgba(234, 29, 200, 0.3)'
                     });
-                    let transcript_data = wavesurfer.elan.data.tiers.map(function(tier) {
+                    let transcript_data = wavesurfer.elan.data.tiers.map(tier => {
                       var matchingAnnotations = [];
                       if (tier.annotations) {
                          matchingAnnotations = tier.annotations.filter(function(annotation) {
@@ -487,12 +492,11 @@
                     
                       return matchingAnnotations.filter(function(annotation) {
                         return annotation.value;
-                      }).map(function(annotation) {
-                        return annotation.value;
-                      });
+                      }).map(annotation => annotation.value);
                     });
 
                     let annotation = session.annotations[region.id];
+
 
                     if(!session.annotations[alignable_id] || (session.annotations[alignable_id] && !session.annotations[alignable_id].start)) {
                       let annotation = {
@@ -507,10 +511,13 @@
                     }
 
                     const item = itemMapper(session, session.annotations[region.id], region.id);
-                    items.push(item);
+                    tableItems.push(item);
                   }
               }
+              console.log('data READY')
+              session.loaded = true;
             };
+           
           };
 
           var onProgressFactory = function(rowFn, scrollFn) {
@@ -548,7 +555,7 @@
             wavesurfer.play(region.start)
           }
           this.wavesurfers[session.sessionId].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
-          this.wavesurfers[session.sessionId].elan.on('ready', elanReadyFactory(wavesurfer, this.items));
+          this.wavesurfers[session.sessionId].elan.on('ready', elanReadyFactory(wavesurfer, this.items[session.sessionId]));
           this.wavesurfers[session.sessionId].on('region-click', onRegionClick);
 
         })
@@ -574,8 +581,6 @@
         store.dispatch('deleteSession', this.sessionToDelete);  
       },
       handleUpdateTranscript() {
-          console.log('clear for: ');
-          console.log(this.updateModalSession)
           store.dispatch('updateSession', this.updateModalSession) 
           store.dispatch('clearAnnotations', this.updateModalSession);
       },
