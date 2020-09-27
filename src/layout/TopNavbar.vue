@@ -15,10 +15,17 @@
       <div class="collapse navbar-collapse justify-content-end">
         <ul class="nav navbar-nav mr-auto">
           <li class="nav-item">
-            <a href="#" class="nav-link">
-              <i class="nc-icon nc-zoom-split"></i>
-              <span class="d-lg-block">&nbsp;Search</span>
-            </a>
+            <form @submit="submit" method="get" >
+              <div>
+                <input
+                  v-model="searchText"
+                  type="text"
+                  name="search"
+                  class="form-control"
+                  placeholder="Search ..."
+                >
+              </div>
+            </form>
           </li>
         </ul>
         <ul class="navbar-nav ml-auto">
@@ -40,6 +47,7 @@
 <script>
   import { mapGetters } from "vuex";
   import firebase from "firebase";
+  import store from '../store'
 
   export default {
     computed: {
@@ -53,7 +61,8 @@
     },
     data () {
       return {
-        activeNotifications: false
+        activeNotifications: false,
+        searchText: null
       }
     },
     methods: {
@@ -81,7 +90,13 @@
               name: "home"
             });
           });
+       },
+       submit(e) {
+          e.preventDefault();
+          store.dispatch('loadSpeechSessions', { limit: 5,  search: this.searchText })
+             
        }
+
     }
   }
 

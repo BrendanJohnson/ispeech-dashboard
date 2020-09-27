@@ -223,11 +223,17 @@ const store = new Vuex.Store({
               });
 
               return docIds.slice(0,9); // Only return 10 docIds max
-          }).then((docIds)=>{
+          }).then(docIds=>{
               console.log('GOT DOCIDS');
               console.log(docIds);
-              speechSessionsCollection.where('__name__', 'in', docIds)
+              if (docIds.length) {
+                  speechSessionsCollection.where('__name__', 'in', docIds)
                                       .onSnapshot(onSpeechSnapshot)
+              }
+              else {
+                store.commit('setSpeechSessions', [])
+              }
+
           })
       }
       else {
