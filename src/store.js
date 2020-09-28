@@ -1,10 +1,11 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { childrenCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
+import { childrenCollection, countsCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
-
 const syntaxColors = { 'VERB': 'red' , 'ADV': 'orange', 'ADP': 'orange', 'PRON': '#1DCAE84D', 'NOUN': '#1D62F0', 'ADJ': 'green', 'DEFAULT': '#1D62F0' };
+
+
 
 const annotationNlpMapper = (annotation, nlp) => {
 
@@ -130,6 +131,15 @@ childrenCollection.onSnapshot(snapshot => {
     });
 })
 
+countsCollection.where("type", "==", "speechSession").onSnapshot(snapshot => {
+  console.log(snapshot.docs)
+  snapshot.docs.forEach(function (doc) {
+      const countsData = doc.data();
+      store.commit('setCounts', 104)    
+   });
+
+})
+
 const store = new Vuex.Store({
   state: {
     children: [],
@@ -138,7 +148,7 @@ const store = new Vuex.Store({
       loggedIn: false,
       data: null
     },
-    speechSessionPagination: { currentPage: 1, next: null, limit: 5 },
+    speechSessionPagination: { currentPage: 1, next: null, limit: 5, total: 0 },
     speechSession: null,
     speechSessions: []
   },
@@ -156,6 +166,10 @@ const store = new Vuex.Store({
   mutations: {
     setChildren(state, value) {
       state.children = value;
+    },
+    setCounts(state, value) {
+      console.log('setting data: ' + value)
+      state.speechSessionPagination.total = value;
     },
   	setSpeechSessions(state, value) {
   		state.speechSessions = value;
@@ -204,6 +218,15 @@ const store = new Vuex.Store({
         comments: "",
         createdOn: new Date()
       };
+      await countsCollection.where("type", "==", "speechSession").get().then((snapshots)=>{
+        
+           snapshots.forEach(function (doc) {
+                doc.ref.update({count: 1 }).then(()=>{
+                     store.commit('setSessionsCount', 1);
+                 })
+                 
+           });
+      });
   		await speechSessionsCollection.add(session).then(()=> {
         return store.commit('setSpeechSession', session)
       })

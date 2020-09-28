@@ -1,4 +1,5 @@
 <template>
+
   <div v-if="speechSessions.length">
     <!-- Delete modal -->
     <b-modal id="delete-modal" @ok="handleDeleteSession">
@@ -18,7 +19,12 @@
       </p> 
       <p>Do you wish to continue?</p>
     </b-modal>
-
+    <b-pagination
+      v-model="speechSessionPagination.currentPage"
+      :total-rows="speechSessionPagination.total"
+      :per-page="5"
+      aria-controls="my-table"
+    ></b-pagination>
     <card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <h4 slot="header" class="card-title">
         Session {{session.createdOn | formatDate}}
@@ -140,9 +146,9 @@
     </card>
   </div>
   <div v-else>
-    <p class="no-results">There are currently no sessions</p>
+    <p class="no-results">No matching sessions were found</p>
     <form @submit.prevent>
-      <button  class="btn btn-primary"  @click="createSession()" >Create Session</button>
+      <button class="btn btn-primary"  @click="clearSearch" >Clear search</button>
     </form>
   </div>
 </template>
@@ -236,7 +242,9 @@
       SyntaxCanvas
     },
     created () {
-      store.dispatch('loadSpeechSessions', { limit: 5,  search: "" })
+      const searchParam = this.$route.query.search;
+      console.log('SEARCH PARAM: ' + searchParam);
+      store.dispatch('loadSpeechSessions', { limit: 5,  search: searchParam })
     },
     data () {
       return {
@@ -338,7 +346,6 @@
                 timelineUrl:  'https://storage.googleapis.com/ispeech-manifests/' + data.timeline,
                 manifestUrl: 'https://storage.googleapis.com/ispeech-manifests/' + data.manifest
           };
-
       })
 
     	if (this.speechSessions.length) {
@@ -346,7 +353,8 @@
     	}
     },
     computed: {
-      ...mapGetters({ speechSessionPagination: 'getPagination', speechSessions: 'getSpeechSessionsPaginated' }),
+      ...mapGetters({ speechSessions: 'getSpeechSessionsPaginated' }),
+      ...mapState(['speechSessionPagination']),
       rows() {
         return this.speechSessions.length
       }
@@ -358,15 +366,15 @@
         if (sessions.length) {
           sessions.forEach(session => {
             if(!this.wavesurfers[session.sessionId]) {
-              console.log('CREATE NEW')
-              console.log(session)
               this.renderWavesurfer(session)
             }
-            else {
-              console.log('UPDATING NEW')
+            else {            
+
               this.items[session.sessionId] = this.items[session.sessionId].map(item => {
                 return itemMapper(session, session.annotations[item.alignable_id], item.alignable_id);
               })
+              session.loaded = true;
+            
             }
           })       
         }
@@ -397,6 +405,9 @@
                                 };
               store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
         });
+      },
+      clearSearch() {
+        store.dispatch('loadSpeechSessions', { limit: 5,  search: null })
       },
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
