@@ -10,8 +10,23 @@
           <div v-if="processingRecording" class="text-center">
               <b-spinner variant="primary" label="Text Centered"></b-spinner>
           </div>
+          <div v-if="audioDistributedProcessing" class="text-center">
+             <div class="container">
+                <div>Analyzing audio file...</div>
+                <b-spinner variant="primary" label="Text Centered"></b-spinner>
+              </div>
+          </div>
+          <div v-if="uploadingAudio && audioUploadFileSize" class="text-center">
+             <div class="container">
+                <div>Uploading audio file...</div>
+                <b-progress :value="audioProgressFileSize" :max="audioUploadFileSize" show-progress animated></b-progress>  
+             </div> 
+          </div>
           <div v-if="processingSession && audioProgressMax" class="text-center">
-             <b-progress :value="audioProgress" :max="audioProgressMax" show-progress animated></b-progress>   
+            <div class="container">
+              <div>Analyzing audio file...</div>
+              <b-progress :value="audioProgress" :max="audioProgressMax" show-progress animated></b-progress> 
+            </div>
           </div>
       		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
       			<b-icon-pause-fill size="md" scale="1">
@@ -121,8 +136,11 @@
     data () {
       return {
         audioData: null,
+        audioDistributedProcessing: false,
         audioProgress: 0,
         audioProgressMax: null,
+        audioProgressFileSize: 0,
+        audioUploadFileSize: null,
       	editingRow: null,
         fftBufferSize: 512, //2048;
       	input: null,
@@ -144,6 +162,7 @@
         audioStream: null,
         annotationsFilter: '',
         recordingNewSession: false,
+        uploadingAudio: false,
         wavesurfers: [],
         fields: [
           {
@@ -201,6 +220,9 @@
       console.log('Establishing socket connection with: ' + process.env.VUE_APP_API_URL);
 
     	this.socket = io.connect(process.env.VUE_APP_API_URL);
+      this.socket.on('connect', function () {
+        console.log('connected!');
+      });
       let removeLastSentence = true;
       //let speechResults = this.speechRecognitionText;
       let speechRecognitionResults = this.speechRecognitionResults;
@@ -213,13 +235,37 @@
         console.log(result)
          this.processingRecording = false;
          this.processingSession = false;
+         this.audioDistributedProcessing = false;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
          this.speechSession.timelineUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.timeline;
       });
 
+      this.socket.on('upload:event', data=> {
+        if (data.message.type == 'started') {
+          this.uploadingAudio = true;
+          this.audioProgressFileSize = 0;
+          this.audioUploadFileSize = data.message.fileSize;
+        }
+        if (data.message.type == 'progress') {
+          this.audioProgressFileSize = data.message.loaded;
+        }
+        if (data.message.type == 'finished') {
+          this.uploadingAudio = false;
+          
+        }
+      });
+
       this.socket.on('audioProcessingStart', data=> {
         this.audioProgressMax = data.numberOfFiles + 1;
+      })
+
+      this.socket.on('audioDistributedProcessingStart', ()=>{
+        this.audioDistributedProcessing = true;
+      })
+
+      this.socket.on('audioDistributedProcessingEnd', ()=>{
+        this.audioDistributedProcessing = false;
       })
 
       this.socket.on('audioProcessingProgress', data => {
