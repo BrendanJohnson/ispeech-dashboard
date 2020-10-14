@@ -7,6 +7,9 @@
       	 <div v-if="recordingNewSession">
         		<canvas id="newRecordingCanvas" width="800" height="150"></canvas>
       		</div>
+          <div v-if="audioProcessingFinishedMessage" class="card col-sm-3 mx-auto text-center bg-success">
+            Audio Processing Complete
+          </div>
           <div v-if="processingRecording" class="text-center">
               <b-spinner variant="primary" label="Text Centered"></b-spinner>
           </div>
@@ -138,6 +141,7 @@
         audioData: null,
         audioDistributedProcessing: false,
         audioProgress: 0,
+        audioProcessingFinishedMessage: null,
         audioProgressMax: null,
         audioProgressFileSize: 0,
         audioUploadFileSize: null,
@@ -146,7 +150,7 @@
       	input: null,
       	context: null,
         mic: null,
-      	processor: null,
+      	processor: null,   
         processingRecording: false,
         processingSession: false,
       	session: {
@@ -236,6 +240,7 @@
          this.processingRecording = false;
          this.processingSession = false;
          this.audioDistributedProcessing = false;
+         this.audioProcessingFinishedMessage = true;
          this.speechSession.audioUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.audio;
          this.speechSession.manifestUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.manifest;
          this.speechSession.timelineUrl = 'https://storage.googleapis.com/' + result.bucket + '/' + result.timeline;
@@ -373,12 +378,12 @@
         waveformTensor.print();
       },
       processFile() {
+        this.audioProcessingFinishedMessage = false;
         const filename = this.uploadFile.name;
         const uploader = new SocketIOFileUpload(this.socket);
         uploader.addEventListener('complete', (data)=> {
           store.dispatch('createSpeechSession').then((session)=> {
             this.$nextTick(() => {
-                console.log(this.speechSession)
                 this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename });
                 this.processingSession = true;
             })
