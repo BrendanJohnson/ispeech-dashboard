@@ -899,3 +899,8 @@ table.wavesurfer-annotations
     stroke: #1DC8EA; 
 
 }
+
+.collapsed > .when-open,
+.not-collapsed > .when-closed {
+  display: none;
+}
