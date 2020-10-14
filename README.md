@@ -23,11 +23,26 @@ The repo uses [vue-cli](https://github.com/vuejs/vue-cli) scaffolding which take
 `gcloud builds submit --tag gcr.io/ispeech-brendan/ispeech-dashboard`
 
 ### Deploy build to Google Cloud Run
-`gcloud run deploy --image gcr.io/ispeech-brendan/ispeech-dashboard --platform managed --region us-central1`
+`gcloud run deploy --image gcr.io/ispeech-brendan/ispeech-dashboard --platform managed --region us-central1 --memory 256Mi`
 
 ## :cloud: Cloud Bucket configuration
 In order to access XML manifests stored in Google Cloud, CORS needs to be setup on the GCS bucket.
 After authentication with your Google Account, use gsutil to execute the following command with the provided cors.json:
 `gsutil cors set cors.json gs://ispeech-manifests`
 
+### Installation of gcloud CLI
+Normally the gcloud tool should be installed using the instructions at https://cloud.google.com/sdk/docs/quickstart.
+
+On MacOS there maybe an error after trying to run the init.sh script due to the installed version of the openssl library being wrong (usually too new). The following commands helped to fix the issue:   
+
+1. Install an older version of openssl using Homebrew:
+```
+brew uninstall openssl
+brew tap-new $USER/old-openssl
+brew extract --version=1.0.2t openssl $USER/old-openssl
+brew install openssl@1.0.2t
+```
+Note that the first time I ran this there was an error due to needing to access Github to download the version, I remedied this by first running `export HOMEBREW_NO_GITHUB_API=1` which sets an environment variable.
+
+2. Create a symlink to point to the Tap installed by Homebrew: `ln -s /usr/local/opt/openssl@1.0.2t /usr/local/opt/openssl`
 
