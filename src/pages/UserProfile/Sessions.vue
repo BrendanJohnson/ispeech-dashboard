@@ -18,12 +18,18 @@
       </p> 
       <p>Do you wish to continue?</p>
     </b-modal>
-    <b-pagination
-      v-model="speechSessionPagination.currentPage"
-      :total-rows="speechSessionPagination.total"
-      :per-page="5"
-      aria-controls="my-table"
-    ></b-pagination>
+    <div class="row">
+        <div class="btn-block">
+            <b-button @click="getPreviousPage" href="#" class="btn btn-primary">Previous</b-button>
+            <b-button @click="getNextPage" href="#" class="btn btn-primary float-right">Next</b-button>
+        </div>
+    </div>
+    <div v-if="speechSessions.length == 0">
+      <p class="no-results">No matching sessions were found</p>
+      <form @submit.prevent>
+        <button class="btn btn-primary"  @click="clearSearch" >Clear search</button>
+      </form>
+    </div>
     <div class="accordion"  role="tablist">
     <b-card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <b-card-header header-tag="header" slot="header" role="tab" class="card-title">
@@ -145,11 +151,8 @@
     </b-card>
     </div>
   </div>
-  <div v-else>
-    <p class="no-results">No matching sessions were found</p>
-    <form @submit.prevent>
-      <button class="btn btn-primary"  @click="clearSearch" >Clear search</button>
-    </form>
+  <div v-else class="spinner-border text-primary" role="status" >
+    <span class="sr-only">Loading...</span>
   </div>
 </template>
 <script>
@@ -243,7 +246,6 @@
     },
     created () {
       const searchParam = this.$route.query.search;
-      console.log('SEARCH PARAM: ' + searchParam);
       store.dispatch('loadSpeechSessions', { limit: 5,  search: searchParam })
     },
     data () {
@@ -365,10 +367,7 @@
     },
     computed: {
       ...mapGetters({ speechSessions: 'getSpeechSessionsPaginated' }),
-      ...mapState(['speechSessionPagination']),
-      rows() {
-        return this.speechSessions.length
-      }
+      ...mapState(['speechSessionPagination'])
     
     },
     watch: {
@@ -418,6 +417,12 @@
       },
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
+      },
+      getNextPage() {
+        store.dispatch('loadSpeechSessions', { limit: 5,  search: null, next: this.speechSessionPagination.next })
+      },
+      getPreviousPage() {
+        store.dispatch('loadSpeechSessions', { limit: 5,  search: null, previous: this.speechSessionPagination.previous })
       },
       renderWavesurfer(session) {
         this.$nextTick(() => {
