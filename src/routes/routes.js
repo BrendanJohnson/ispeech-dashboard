@@ -5,7 +5,7 @@ import NotFound from '../pages/NotFoundPage.vue'
 // Admin pages
 import ChildProfile from 'src/pages/ChildProfile.vue'
 import Login from 'src/pages/Login.vue'
-import Overview from 'src/pages/Overview.vue'
+import Dashboard from 'src/pages/Dashboard.vue'
 import Register from 'src/pages/Register.vue'
 import NewSession from 'src/pages/NewSession.vue'
 import UserProfile from 'src/pages/UserProfile.vue'
@@ -20,7 +20,7 @@ const routes = [
   {
     path: '/',
     component: DashboardLayout,
-    redirect: '/admin/overview'
+    redirect: '/admin/dashboard'
   },
   {
     path: '/login',
@@ -36,15 +36,15 @@ const routes = [
   {
     path: '/admin',
     component: DashboardLayout,
-    redirect: '/admin/overview',
+    redirect: '/admin/dashboard',
     meta: {
       auth: true
     },
     children: [
       {
-        path: 'overview',
-        name: 'Overview',
-        component: Overview
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: Dashboard
       },
       {
         path: 'profile',
@@ -85,11 +85,6 @@ const routes = [
         path: 'notifications',
         name: 'Notifications',
         component: Notifications
-      },
-      {
-        path: 'upgrade',
-        name: 'Upgrade to PRO',
-        component: Upgrade
       }
     ]
   },

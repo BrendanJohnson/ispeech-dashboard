@@ -8,7 +8,8 @@
               <i class="nc-icon nc-chart text-warning"></i>
             </div>
             <div slot="content">
-              <p class="card-category">Sessions</p>
+              <p class="card-category">Sessions
+              </p>
               <h4 class="card-title">{{stats.noOfSessions}}</h4>
             </div>
             <div slot="footer">
@@ -102,9 +103,7 @@
 
         </div>
       </div>
-
       <div class="row">
-
         <div class="col-md-8">
           <chart-card
             :chart-data="barChart.data"
@@ -120,9 +119,7 @@
                 <b-badge pill variant="secondary"  style="margin: 2px; background-color: #1DC8EA;">Adult</b-badge>
             </template>
           </chart-card>
-
         </div>
-
         <div class="col-md-4">
           <chart-card :chart-data="pieChart.data" chart-type="Pie">
             <template slot="header">
@@ -142,8 +139,9 @@
   </div>
 </template>
 <script>
-  import { mapState } from 'vuex'
+  import { mapGetters } from 'vuex'
   import moment from 'moment'
+  import store from '../store'
   import ChartCard from 'src/components/Cards/ChartCard.vue'
   import StatsCard from 'src/components/Cards/StatsCard.vue'
   import LTable from 'src/components/Table.vue'
@@ -155,25 +153,25 @@
       StatsCard
     },
     computed: {
-      stats() {
-        return {
-            noOfSessions: this.$store.state.speechSessions.length,
-            totals: this.$store.state.speechSessions.reduce((a,b) => {
-              return { childSpeechDuration: a.childSpeechDuration + b.childSpeechDuration,
-                      totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
-              };
-            }),
-
-          }
-      },
+      ...mapGetters({ stats: 'getStatistics' }),
+      //stats() {
+     //   return {
+   //         noOfSessions: this.$store.state.speechSessions.length,
+    //        totals: this.$store.state.speechSessions.reduce((a,b) => {
+    //          return { childSpeechDuration: a.childSpeechDuration + b.childSpeechDuration,
+    //                  totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
+    //          };
+    //        }),
+    //      }
+  //    },
       barChart() {
-          var dateLabels = this.$store.state.speechSessions.map(session => {
+          var dateLabels = this.stats.speechSessions.map(session => {
             return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
           })
-          var childNoOfTurns = this.$store.state.speechSessions.map(session => {
+          var childNoOfTurns = this.stats.speechSessions.map(session => {
             return session.childNoOfTurns
           })
-          var adultNoOfTurns = this.$store.state.speechSessions.map(session => {
+          var adultNoOfTurns = this.stats.speechSessions.map(session => {
             return session.adultNoOfTurns
           })
 
@@ -211,31 +209,23 @@
           }
       },
       pieChart() {
-        var languageMap = this.$store.state.speechSessions.reduce((entryMap, e) => entryMap.set(e.language, [...entryMap.get(e.language)||[], e]),
-            new Map()
-        );
-        var languageComposition = Array.from(languageMap.values()).map((language)=>{
-            return language.length
-        })
-
         return {
           data: {
-            labels: Array.from(languageMap.keys()),
-            series: languageComposition
+            labels: this.stats.languages,
+            series: this.stats.languageComposition
           }
         }
       },
       lineChart () {
-        var dateLabels = this.$store.state.speechSessions.map(session => {
+        var dateLabels = this.stats.speechSessions.map(session => {
           return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
         })
-        var childSpeechPercentages = this.$store.state.speechSessions.map(session => {
+        var childSpeechPercentages = this.stats.speechSessions.map(session => {
           return Math.abs((session.childSpeechDuration / session.totalSpeechDuration) * 100)
         })
-        var childTurnsPercentages = this.$store.state.speechSessions.map(session => {
+        var childTurnsPercentages = this.stats.speechSessions.map(session => {
           return Math.abs((session.childNoOfTurns / session.totalNoOfTurns) * 100)
         })
-        console.log(childSpeechPercentages)
         return {
           data: {
             labels: dateLabels,
@@ -275,6 +265,9 @@
           
         };
       }
+    },
+    created () {
+      store.dispatch('loadSpeechSessions')
     },
     data () {
       return {

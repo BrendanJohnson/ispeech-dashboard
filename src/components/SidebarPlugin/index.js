@@ -7,7 +7,7 @@ const SidebarStore = {
     {
       name: 'Dashboard',
       icon: 'ti-panel',
-      path: '/admin/overview'
+      path: '/admin/dashboard'
     }
   ],
   displaySidebar (value) {
@@ -16,7 +16,6 @@ const SidebarStore = {
 }
 
 const SidebarPlugin = {
-
   install (Vue) {
     Vue.mixin({
       data () {

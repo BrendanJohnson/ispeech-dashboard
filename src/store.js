@@ -50,7 +50,6 @@ const annotationNlpMapper = (annotation, nlp) => {
 const onSpeechSnapshot= snapshot => {
   store.commit('setPagination', { next: snapshot.docs[snapshot.docs.length - 1],
                                   previous: snapshot.docs[0] })
-
   Promise.all(snapshot.docs.map(doc => {
       let session = doc.data()
       session.id = doc.id
@@ -159,6 +158,34 @@ const store = new Vuex.Store({
     getSpeechSessionsPaginated: (state) => {
       return state.speechSessions
     },
+    getStatistics: (state) => {
+      if (!state.speechSessions.length) {
+        return {
+          languages: 0,
+          languageComposition: [],
+          noOfSessions: 0,
+          speechSessions: [],
+          totals: {}
+        }
+      }
+      let languageMap = state.speechSessions.reduce((entryMap, e) => entryMap.set(e.language, [...entryMap.get(e.language)||[], e]),
+            new Map()
+      );
+      return {
+        languages: Array.from(languageMap.keys()),
+        languageComposition: Array.from(languageMap.values()).map((language)=>{
+            return language.length
+        }),
+        noOfSessions: state.speechSessions.length,
+        totals: state.speechSessions.reduce((a,b) => {
+                  return {
+                            childSpeechDuration: a.childSpeechDuration + b.childSpeechDuration,
+                            totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
+                          }
+                  }),
+        speechSessions: state.speechSessions
+      }
+    },
     user(state){
       return state.user
     }
@@ -174,9 +201,6 @@ const store = new Vuex.Store({
   	setSpeechSessions(state, value) {
   		state.speechSessions = value;
   	},
-    setSpeechSession(state, value) {
-      state.speechSession = value;
-    },
     setChildQuotes(state, value) {
         state.children = state.children.map(child=>{
             if(value) child.quotes.push(value)
@@ -231,9 +255,9 @@ const store = new Vuex.Store({
         return store.commit('setSpeechSession', session)
       })
   	},
-    async loadSpeechSessions({state, commit}, { limit, next, previous, search }) {
-      if (search) { 
-          annotationsCollection.where("transcript", "==", search).get().then(function (querySnapshot) {
+    async loadSpeechSessions({state, commit}, options={ limit: 100 }) {
+      if (options.search) { 
+          annotationsCollection.where("transcript", "==", options.search).get().then(function (querySnapshot) {
               let docIds = [];
               querySnapshot.forEach(function (doc) {
                   docIds.push(doc.ref.parent.parent.id);
@@ -241,8 +265,6 @@ const store = new Vuex.Store({
 
               return docIds.slice(0,9); // Only return 10 docIds max
           }).then(docIds=>{
-              console.log('GOT DOCIDS');
-              console.log(docIds);
               if (docIds.length) {
                   speechSessionsCollection.where('__name__', 'in', docIds)
                                       .onSnapshot(onSpeechSnapshot)
@@ -253,22 +275,22 @@ const store = new Vuex.Store({
 
           })
       }
-      else if (next) {
+      else if (options.next) {
         speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .startAfter(next)
-                                .limit(limit)
+                                .startAfter(options.next)
+                                .limit(options.limit)
                                 .onSnapshot(onSpeechSnapshot);
 
       }
-      else if (previous) {
+      else if (options.previous) {
         speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .endBefore(previous)
-                                .limit(limit)
+                                .endBefore(options.previous)
+                                .limit(options.limit)
                                 .onSnapshot(onSpeechSnapshot);
       }
       else {
         speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .limit(limit)
+                                .limit(options.limit)
                                 .onSnapshot(onSpeechSnapshot);
       }
       
@@ -289,8 +311,6 @@ const store = new Vuex.Store({
                 .get()
                 .then(docs => {
                     docs.forEach(doc => {
-                        console.log('found doc')
-                        console.log(doc.ref);
                         doc.ref.update(data).then(()=>{
                             store.commit('setSpeechSession', data);
                         })
@@ -298,7 +318,6 @@ const store = new Vuex.Store({
                 })
     },
     async clearAnnotations({state, commit}, data) {
-      console.log('clearing annotations')
       await speechSessionsCollection
             .where("sessionId", "==", data.sessionId)
             .get()
