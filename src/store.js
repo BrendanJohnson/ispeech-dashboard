@@ -1,5 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
+import moment from 'moment'
 import { childrenCollection, countsCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
@@ -171,6 +172,21 @@ const store = new Vuex.Store({
       let languageMap = state.speechSessions.reduce((entryMap, e) => entryMap.set(e.language, [...entryMap.get(e.language)||[], e]),
             new Map()
       );
+      let adultChildData = state.speechSessions.map(session => ({
+            childSpeechPercentage: Math.abs((session.childSpeechDuration / session.totalSpeechDuration) * 100) || 0,
+            childTurnsPercentage: Math.abs((session.childNoOfTurns / session.totalNoOfTurns) * 100) || 0,
+            date: session.createdOn.toDate()
+
+          })).filter(data => {
+          return (data.childSpeechPercentage > 0) && (data.childTurnsPercentage > 0);
+      })
+      let sessionDates = state.speechSessions.map(session => ({
+            adultNoOfTurns: session.adultNoOfTurns,
+            childNoOfTurns: session.childNoOfTurns,
+            date: session.createdOn.toDate(),
+        })).filter(data => { 
+          return data.adultNoOfTurns && data.childNoOfTurns
+        }).sort((a,b)=>{ return a.date - b.date })
       return {
         languages: Array.from(languageMap.keys()),
         languageComposition: Array.from(languageMap.values()).map((language)=>{
@@ -183,6 +199,14 @@ const store = new Vuex.Store({
                             totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
                           }
                   }),
+        adultChildRatio: {
+          speechPercentage: adultChildData.map(data=>({ x: data.date, y: data.childSpeechPercentage})),
+          turnsPercentage: adultChildData.map(data=>({ x: data.date, y: data.childTurnsPercentage})),
+          dates: adultChildData.map(data=>data.date)
+        },
+        sessionDates: sessionDates.map(data => moment(data.date).format('MMM DD')),
+        adultNoOfTurns: sessionDates.map(session => session.adultNoOfTurns),
+        childNoOfTurns: state.speechSessions.map(session => session.childNoOfTurns),
         speechSessions: state.speechSessions
       }
     },
@@ -255,7 +279,7 @@ const store = new Vuex.Store({
         return store.commit('setSpeechSession', session)
       })
   	},
-    async loadSpeechSessions({state, commit}, options={ limit: 100 }) {
+    async loadSpeechSessions({state, commit}, options={ limit: 20 }) {
       if (options.search) { 
           annotationsCollection.where("transcript", "==", options.search).get().then(function (querySnapshot) {
               let docIds = [];

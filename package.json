@@ -15,6 +15,7 @@
   "dependencies": {
     "bootstrap": "^4.5.0",
     "bootstrap-vue": "^2.15.0",
+    "chart.js": "^2.9.4",
     "chartist": "^0.11.0",
     "core-js": "^2.6.11",
     "core-js-bundle": "^3.6.5",
@@ -28,6 +29,7 @@
     "socketio-file-upload": "^0.7.2",
     "v-tooltip": "^2.0.0-rc.33",
     "vue": "^2.6.11",
+    "vue-chartjs": "^3.5.1",
     "vue-moment": "^4.1.0",
     "vue-router": "^3.0.2",
     "vue2-google-maps": "^0.8.4",

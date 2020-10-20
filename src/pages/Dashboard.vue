@@ -14,7 +14,7 @@
             </div>
             <div slot="footer">
                <div class="stats">
-                <i class="fa fa-history"></i> Last session 27 July 2020
+                <i class="fa fa-history"></i> Last session {{stats.sessionDates[stats.sessionDates.length-1]}}
               </div>
             </div>
           </stats-card>
@@ -29,9 +29,7 @@
               <h4 class="card-title">{{[stats.totals.childSpeechDuration, 'seconds'] | duration('humanize')}}</h4>
             </div>
             <div slot="footer">
-              <div class="stats">
-                <i class="fa fa-history"></i> Last updated 2 days ago 
-              </div>
+           
             </div>
           </stats-card>
         </div>
@@ -45,36 +43,29 @@
               <h4 class="card-title">{{stats.totals.totalTranscriptWords}}</h4>
             </div>
             <div slot="footer">
-              <div class="stats">
-                <i class="fa fa-history"></i> Last updated 2 days ago 
-              </div>
+             
             </div>
           </stats-card>
         </div>
       </div>
       <div class="row">
         <div class="col-md-8">
-          <chart-card :chart-data="lineChart.data"
-                      :chart-options="lineChart.options"
-                      :responsive-options="lineChart.responsiveOptions">
-            <template slot="header">
+          <div class="card" v-if="adultChildRatioData && !reloading">
+            <div class="card-header">
               <h4 class="card-title">Child/Adult Ratio</h4>
               <p class="card-category">Percentage of time the child speaks in the session</p>
-               <hr>
-            </template>
-            <template slot="footer">
-              <div class="legend">
-                <i class="fa fa-circle text-info"></i> % Speech time
-                <i class="fa fa-circle text-danger"></i> % Turns
-              </div>
               <hr>
-              <div class="stats">
-                <i class="fa fa-history"></i> Updated 3 minutes ago
-              </div>
-            </template>
-          </chart-card>
+            </div>
+            <div class="card-body">
+              <line-chart height="240px" :chart-data="adultChildRatioData" :chart-options="adultChildRatioOptions"></line-chart>
+        
+            </div>
+          </div>
+          <div v-else>
+            <h4>Loading session statistics...</h4>
+          </div>
         </div>
-                <div class="col-md-4">
+        <div class="col-md-4">
           <card>
             <template slot="header">
                <h4 class="card-title">Recommendations</h4>
@@ -98,27 +89,21 @@
                 </td>
               </template>
             </l-table>
-
           </card>
-
         </div>
       </div>
       <div class="row">
         <div class="col-md-8">
-          <chart-card
-            :chart-data="barChart.data"
-            :chart-options="barChart.options"
-            :chart-responsive-options="barChart.responsiveOptions"
-            chart-type="Bar">
-            <template slot="header">
+          <div class="card" v-if="utterancesData && !reloading">
+            <div class="card-header">
               <h4 class="card-title">No. of Utterances</h4>
-              <p class="card-category">All sessions to date</p>
-              <hr>
-              <b-badge pill variant="primary" style="margin: 2px; background-color: rgba(234, 29, 200, 0.3);">Child</b-badge>
-
-                <b-badge pill variant="secondary"  style="margin: 2px; background-color: #1DC8EA;">Adult</b-badge>
-            </template>
-          </chart-card>
+                <p class="card-category">All sessions to date</p>
+                <hr>
+            </div>
+            <div class="card-body">
+              <bar-chart :chart-data="utterancesData" :chart-options="utterancesOptions"></bar-chart>
+            </div>
+          </div>
         </div>
         <div class="col-md-4">
           <chart-card :chart-data="pieChart.data" chart-type="Pie">
@@ -139,31 +124,121 @@
   </div>
 </template>
 <script>
+  
   import { mapGetters } from 'vuex'
   import moment from 'moment'
   import store from '../store'
   import ChartCard from 'src/components/Cards/ChartCard.vue'
+  import BarChart from 'src/components/Charts/BarChart.js'
+  import LineChart from 'src/components/Charts/LineChart.js'
   import StatsCard from 'src/components/Cards/StatsCard.vue'
   import LTable from 'src/components/Table.vue'
 
   export default {
     components: {
       LTable,
+      BarChart,
       ChartCard,
+      LineChart,
       StatsCard
     },
     computed: {
       ...mapGetters({ stats: 'getStatistics' }),
-      //stats() {
-     //   return {
-   //         noOfSessions: this.$store.state.speechSessions.length,
-    //        totals: this.$store.state.speechSessions.reduce((a,b) => {
-    //          return { childSpeechDuration: a.childSpeechDuration + b.childSpeechDuration,
-    //                  totalTranscriptWords: a.totalTranscriptWords + b.totalTranscriptWords
-    //          };
-    //        }),
-    //      }
-  //    },
+      adultChildRatioOptions() {
+        return {
+                    responsive: true,
+                    scales: {
+                      xAxes: [{
+                        type: 'time',
+                         ticks: {
+                                  autoSkip: true,
+                                  maxTicksLimit: 7
+                                },
+                         time: {
+                                 displayFormats: {
+                                   'millisecond': 'MMM DD',
+                                   'second': 'MMM DD',
+                                   'minute': 'MMM DD',
+                                   'hour': 'MMM DD',
+                                   'day': 'MMM DD',
+                                   'week': 'MMM DD',
+                                   'month': 'MMM DD',
+                                   'quarter': 'MMM DD',
+                                   'year': 'MMM DD',
+                                }
+                         }
+                      }] 
+                    }
+              };
+      },
+
+      adultChildRatioData() {
+        if (this.stats && this.stats.adultChildRatio) {
+          this.reloading = false;
+          console.log('this.stats.adultChildRatio.speechPercentage')
+          console.log(this.stats.adultChildRatio.combinedData)
+          return {
+            datasets: [
+              {
+                label: 'Child speech % (by time)',
+                backgroundColor: '#1DC8EA',
+                data: this.stats.adultChildRatio.speechPercentage,
+              },
+              {
+                label: 'Child speech % (by turns)',
+                backgroundColor: 'rgba(234, 29, 200, 0.3)',
+                data: this.stats.adultChildRatio.turnsPercentage
+              }
+            ]
+        }
+        }
+        else return null
+
+      },
+      utterancesData() {
+        if (this.stats && this.stats.childNoOfTurns) {
+          return {
+            labels: this.stats.sessionDates,
+            datasets: [{
+              label: 'Child',
+              backgroundColor: '#ffbff6',
+              data: this.stats.childNoOfTurns
+            },
+            {
+            label: 'Adult',
+            backgroundColor: '#1DC8EA',
+            data: this.stats.adultNoOfTurns
+          }]
+          }
+        }
+        else return null
+
+      },
+      utterancesOptions() {
+        return {    
+                    responsive: true,
+                    indexAxis: 'y',
+
+                    scales: {
+                      xAxes: [{
+                        stacked: true,
+                        barThickness: 25,
+                        offset: true,
+                        display: true,
+
+                        scaleLabel: {
+                              display: true,
+                              labelString: "Session Date",
+                          }
+                      }],
+                      yAxes: [{
+                        ticks: {
+                          beginAtZero: true
+                        }
+                      }] 
+                    }
+              };
+      },
       barChart() {
           var dateLabels = this.stats.speechSessions.map(session => {
             return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
@@ -215,64 +290,21 @@
             series: this.stats.languageComposition
           }
         }
-      },
-      lineChart () {
-        var dateLabels = this.stats.speechSessions.map(session => {
-          return moment(session.createdOn.toDate()).format("DD/MM/YYYY")
-        })
-        var childSpeechPercentages = this.stats.speechSessions.map(session => {
-          return Math.abs((session.childSpeechDuration / session.totalSpeechDuration) * 100)
-        })
-        var childTurnsPercentages = this.stats.speechSessions.map(session => {
-          return Math.abs((session.childNoOfTurns / session.totalNoOfTurns) * 100)
-        })
-        return {
-          data: {
-            labels: dateLabels,
-            series: [childSpeechPercentages, childTurnsPercentages]
-          },
-          options: {
-            low: 0,
-            high: 70,
-            showArea: false,
-            height: '245px',
-            axisX: {
-              showGrid: false
-            },
-            lineSmooth: true,
-            showLine: true,
-            showLabel: true,
-            showPoint: true,
-            fullWidth: true,
-            chartPadding: {
-              right: 35
-            },
-             axisX: {
-              labelOffset: {
-                x: -50
-              }
-             }
-          },
-          responsiveOptions: [
-            ['screen and (max-width: 640px)', {
-              axisX: {
-                labelInterpolationFnc (value) {
-                  return value[0]
-                }
-              }
-            }]
-          ]
-          
-        };
       }
     },
+    mounted () {
+      console.log('dispatched mounted()')
+      this.reloading = true;
+    },
     created () {
+      console.log('dispatched created()')
       store.dispatch('loadSpeechSessions')
     },
     data () {
       return {
         editTooltip: 'Edit Task',
         deleteTooltip: 'Remove',
+        reloading: false,
         tableData: {
           data: [
             {title: 'Practice speaking in group class', checked: false},
