@@ -1,7 +1,8 @@
 <template>
   <div class="content">
-<div>
-  <b-card bg-variant="light">
+  
+<div class="container">
+  <b-card v-for="child in children" :key="child.id" bg-variant="light">
     <b-form-group
       label-cols-lg="3"
       label="Child Profile"
@@ -15,7 +16,7 @@
         	label-align-sm="right"
         	label-for="nested-street"
      	>
-        	<b-form-input id="nested-street" v-model="children[0].name"></b-form-input>
+        	<b-form-input id="nested-street" v-model="child.name"></b-form-input>
       	</b-form-group>
       	<b-form-group
       	    label-cols-sm="3"
@@ -23,14 +24,18 @@
         	label-align-sm="right"
         	label-for="ex-disabled-readonly"
      	>
-          <b-form-datepicker v-model="children[0].dateOfBirth" :date-format-options="{ year: 'numeric', month: 'short', day: '2-digit'}" id="ex-disabled-readonly" :disabled="disabled" :readonly="readonly"></b-form-datepicker>
+          <b-form-datepicker v-model="child.dateOfBirth" :date-format-options="{ year: 'numeric', month: 'short', day: '2-digit'}" id="ex-disabled-readonly" :disabled="disabled" :readonly="readonly"></b-form-datepicker>
        </b-form-group> 
        
     </b-form-group>
-    <div class="mx-auto" style="width: 200px;">
-   		<b-button block variant="primary" @click="saveChild(children[0])">Save changes</b-button> 
+    <div class="mx-auto">
+      <b-button variant="primary" @click="changeChild(child)">Switch to child</b-button> 
+   		<b-button variant="primary" class="float-right"  @click="saveChild(child)">Save changes</b-button> 
     </div>
   </b-card>
+  <div class="mx-auto">
+    <b-button variant="primary" @click="newChild" class="float-right">New Child</b-button>
+  </div>
 </div>
   </div>
 </template>
@@ -145,9 +150,15 @@
       }
     },
     methods: {
+        newChild() {
+          store.dispatch('addChild')
+        },
       	saveChild(child) {
       		store.dispatch('updateChild', child)
-      	}
+      	},
+        changeChild(child) {
+          store.dispatch('setChild', child)
+        }
     }
   }
 </script>

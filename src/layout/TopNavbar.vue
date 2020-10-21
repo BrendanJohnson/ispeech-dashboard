@@ -31,7 +31,7 @@
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
             <a class="nav-link" href="#/admin/profile">
-              Account: {{user.data.displayName}}
+              Child: {{currentChild.name}}
             </a>
           </li>
           <li class="nav-item">
@@ -45,7 +45,7 @@
   </nav>
 </template>
 <script>
-  import { mapGetters } from "vuex";
+  import { mapGetters, mapState } from "vuex";
   import firebase from "firebase";
   import store from '../store'
 
@@ -55,6 +55,7 @@
         const {name} = this.$route
         return this.capitalizeFirstLetter(name)
       },
+      ...mapState(['currentChild']),
       ...mapGetters({
         user: "user"
       })

@@ -143,6 +143,7 @@ countsCollection.where("type", "==", "speechSession").onSnapshot(snapshot => {
 const store = new Vuex.Store({
   state: {
     children: [],
+    currentChild: null,
     lastVisible: null,
     user: {
       loggedIn: false,
@@ -217,6 +218,12 @@ const store = new Vuex.Store({
   mutations: {
     setChildren(state, value) {
       state.children = value;
+      if (!state.currentChild) {
+        state.currentChild = value[0];
+      }
+    },
+    setCurrentChild(state, value) {
+      state.currentChild = value;
     },
     setCounts(state, value) {
       console.log('setting data: ' + value)
@@ -227,8 +234,7 @@ const store = new Vuex.Store({
   	},
     setChildQuotes(state, value) {
         state.children = state.children.map(child=>{
-            if(value) child.quotes.push(value)
-            
+            if(value) child.quotes.push(value)       
             return child
         })
     },
@@ -318,6 +324,15 @@ const store = new Vuex.Store({
                                 .onSnapshot(onSpeechSnapshot);
       }
       
+    },
+    async addChild({state, commit}, child) {
+      let newChild = child || {
+        id: Math.max.apply(Math, state.children.map((x) => { return x.id; })) + 1
+      }
+      await childrenCollection.add(newChild);
+    },
+    async setChild({state, commit}, child) {
+      store.commit('setCurrentChild', child);
     },
     async updateChild({state, commit}, child) {
       await childrenCollection

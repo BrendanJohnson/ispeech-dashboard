@@ -5,13 +5,13 @@
       <a href="#">
         <img class="avatar border-gray" src="img/faces/face-0.jpg" alt="..."/>
 
-        <h4 class="title">{{children[0].name}}<br />
-          <small>Age: {{ new Date() | moment('diff', children[0].dateOfBirth, 'year') }} years, {{ new Date() | moment('diff', children[0].dateOfBirth, 'month') % 12 }} months </small>
+        <h4 class="title">{{currentChild.name}}<br />
+          <small>Age: {{ new Date() | moment('diff', currentChild.dateOfBirth, 'year') }} years, {{ new Date() | moment('diff', currentChild.dateOfBirth, 'month') % 12 }} months </small>
         </h4>
       </a>
     </div>
     <p class="description text-center" >
-      <span v-for="(quote, i) in children[0].quotes">"{{quote}}"
+      <span v-for="(quote, i) in currentChild.quotes">"{{quote}}"
       <br></span>
     </p>
   </card>
@@ -26,24 +26,11 @@
       Card
     },
     computed: {
-      ...mapState(['children'])
+      ...mapState(['currentChild'])
     },
     data () {
       return {
-        details: [
-          {
-            title: '12',
-            subTitle: 'Files'
-          },
-          {
-            title: '2GB',
-            subTitle: 'Used'
-          },
-          {
-            title: '24,6$',
-            subTitle: 'Spent'
-          }
-        ]
+
       }
     },
     methods: {
