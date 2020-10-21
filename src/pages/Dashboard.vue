@@ -293,11 +293,9 @@
       }
     },
     mounted () {
-      console.log('dispatched mounted()')
       this.reloading = true;
     },
     created () {
-      console.log('dispatched created()')
       store.dispatch('loadSpeechSessions')
     },
     data () {
