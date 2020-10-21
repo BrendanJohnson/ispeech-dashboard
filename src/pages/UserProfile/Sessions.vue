@@ -413,7 +413,7 @@
         });
       },
       clearSearch() {
-        store.dispatch('loadSpeechSessions', { limit: 5,  search: null })
+        store.dispatch('loadSpeechSessions', { limit: 5, search: null })
       },
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
