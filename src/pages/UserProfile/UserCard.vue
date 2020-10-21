@@ -1,5 +1,5 @@
 <template>
-  <card class="card-user">
+  <card v-if="currentChild" class="card-user">
     <img slot="image" src="img/markus-spiske-ipYwpFUwC-I-unsplash_400_300.jpg" alt="..."/>
     <div class="author">
       <a href="#">
