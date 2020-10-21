@@ -2,7 +2,7 @@
   <div class="content">
     <div class="container-fluid">
       <div class="row">
-        <div class="col-xl-3 col-md-6">
+        <div v-if="adultChildRatioData && !reloading" class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-warning">
               <i class="nc-icon nc-chart text-warning"></i>
@@ -19,7 +19,7 @@
             </div>
           </stats-card>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div v-if="adultChildRatioData && !reloading" class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-success">
               <i class="nc-icon nc-headphones-2 text-success"></i>
@@ -33,7 +33,7 @@
             </div>
           </stats-card>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div v-if="adultChildRatioData && !reloading" class="col-xl-3 col-md-6">
           <stats-card>
             <div slot="header" class="icon-danger">
               <i class="nc-icon nc-vector text-danger"></i>
@@ -65,7 +65,7 @@
             <h4>Loading session statistics...</h4>
           </div>
         </div>
-        <div class="col-md-4">
+        <div  v-if="adultChildRatioData && !reloading" class="col-md-4">
           <card>
             <template slot="header">
                <h4 class="card-title">Recommendations</h4>
@@ -105,7 +105,7 @@
             </div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div  v-if="adultChildRatioData && !reloading" class="col-md-4">
           <chart-card :chart-data="pieChart.data" chart-type="Pie">
             <template slot="header">
               <h4 class="card-title">Langauge Spoken</h4>
