@@ -123,16 +123,6 @@ const onSpeechSnapshot= snapshot => {
     });
 }
 
-childrenCollection.onSnapshot(snapshot => {
-  Promise.all(snapshot.docs.map(doc => {
-      let child = doc.data()
-      child.quotes = []
-      return child
-    })).then(children => {
-        store.commit('setChildren', children)
-    });
-})
-
 countsCollection.where("type", "==", "speechSession").onSnapshot(snapshot => {
   snapshot.docs.forEach(function (doc) {
       const countsData = doc.data();
@@ -154,6 +144,9 @@ const store = new Vuex.Store({
     speechSessions: []
   },
   getters: {
+    getCurrentChild: (state) => {
+
+    },
     getPagination: (state) => {
       return state.speechSessionPagination
     },
@@ -226,7 +219,6 @@ const store = new Vuex.Store({
       state.currentChild = value;
     },
     setCounts(state, value) {
-      console.log('setting data: ' + value)
       state.speechSessionPagination.total = value;
     },
   	setSpeechSessions(state, value) {
@@ -286,8 +278,12 @@ const store = new Vuex.Store({
       })
   	},
     async loadSpeechSessions({state, commit}, options={ limit: 20 }) {
+      await(store.dispatch('fetchChildren'))
+      const query = speechSessionsCollection.orderBy('createdOn', 'desc').where("childId", "==", state.currentChild.id)
+
       if (options.search) { 
-          annotationsCollection.where("transcript", "==", options.search).get().then(function (querySnapshot) {
+          annotationsCollection.where("transcript", "==", options.search)
+                                .get().then(function (querySnapshot) {
               let docIds = [];
               querySnapshot.forEach(function (doc) {
                   docIds.push(doc.ref.parent.parent.id);
@@ -296,8 +292,7 @@ const store = new Vuex.Store({
               return docIds.slice(0,9); // Only return 10 docIds max
           }).then(docIds=>{
               if (docIds.length) {
-                  speechSessionsCollection.where('__name__', 'in', docIds)
-                                      .onSnapshot(onSpeechSnapshot)
+                  speechSessionsCollection.where('__name__', 'in', docIds).onSnapshot(onSpeechSnapshot)
               }
               else {
                 store.commit('setSpeechSessions', [])
@@ -306,24 +301,14 @@ const store = new Vuex.Store({
           })
       }
       else if (options.next) {
-        speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .startAfter(options.next)
-                                .limit(options.limit)
-                                .onSnapshot(onSpeechSnapshot);
-
+        query.startAfter(options.next).limit(options.limit).onSnapshot(onSpeechSnapshot);
       }
       else if (options.previous) {
-        speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .endBefore(options.previous)
-                                .limit(options.limit)
-                                .onSnapshot(onSpeechSnapshot);
+        query.endBefore(options.previous).limit(options.limit).onSnapshot(onSpeechSnapshot);
       }
       else {
-        speechSessionsCollection.orderBy('createdOn', 'desc')
-                                .limit(options.limit)
-                                .onSnapshot(onSpeechSnapshot);
+        query.limit(options.limit).onSnapshot(onSpeechSnapshot);
       }
-      
     },
     async addChild({state, commit}, child) {
       let newChild = child || {
@@ -408,6 +393,17 @@ const store = new Vuex.Store({
                   })
                 })
               })
+    },
+    async fetchChildren({ commit }) {
+      let snapshot = await childrenCollection.get()
+      
+      Promise.all(snapshot.docs.map(doc => {
+            let child = doc.data()
+            child.quotes = []
+            return child
+      })).then(children => {
+              commit('setChildren', children)
+          });
     },
     fetchUser({ commit }, user) {
       commit("SET_LOGGED_IN", user !== null);
