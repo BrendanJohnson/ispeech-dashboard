@@ -398,10 +398,12 @@
       analyzeText(row, sessionId) {
         let request = {
           method: "POST",
+          mode: "cors",
+          cache: "default",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ inputText: row.item.transcript })
         };
-        fetch('/NLP/',request).then(response => response.json())
+        fetch(process.env.VUE_APP_API_URL + '/NLP/',request).then(response => response.json())
             .then(data => {
               let annotation = {  
                                   annotationId: row.item.alignable_id,
