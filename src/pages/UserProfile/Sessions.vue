@@ -73,9 +73,27 @@
           </div>
         </div>
         <b-collapse id="example-collapse">
-          <b-card title="Word types">
+          <b-card>
+            <b-card-header header-class="container-fluid" header-tag="header" slot="header" role="tab">
+              <div class="row">
+                <div class="col-md-10">
+                  <h3 style="margin-top:0">Parts of speech</h3>
+                </div>
+                <div class="col-md-2 float-right">
+                    <b-button variant="secondary" small @click="analyzeTranscript(items[session.sessionId])" class="float-right">Analyze</b-button>
+                </div>
+
+              </div>
+            </b-card-header>
             <div>
-              <p v-for="(count, tag) in session.tagTotals">{{tag}}: {{count}}</p>
+              <pie-chart :chart-data="{
+                  datasets: [{
+                    data: session.tagTotalCounts,
+                    backgroundColor: session.tagColors
+                  }],
+                  labels: session.tagTotalLabels
+              }"
+              :chart-options="nlpChartOptions"></pie-chart>
             </div>
           </b-card>
         </b-collapse>
@@ -117,7 +135,7 @@
                       <b-button-toolbar class="float-right float-top">
                         <b-button-group class="btn-group-sm">
                           <b-button variant="outline-primary">
-                            <b-icon-question-circle size="sm" scale="1" class="float-right" @click="analyzeText(row, session.sessionId)" >
+                            <b-icon-question-circle size="sm" scale="1" class="float-right" @click="analyzeText(row)" >
                           </b-icon-question-circle>
                         </b-button>
                           <b-button variant="outline-primary">
@@ -158,6 +176,7 @@
 <script>
   import { BCard, BCollapse, BIcon, BIconEmojiSmile, BIconEmojiNeutral, BIconEmojiFrown, BIconEmojiDizzy, BIconEmojiLaughing, BIconQuestionCircle, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
+  import PieChart from 'src/components/Charts/PieChart.js'
   import SyntaxArrow from 'src/components/Syntax/SyntaxArrow.vue'
   import SyntaxBox from 'src/components/Syntax/SyntaxBox.vue'
   import SyntaxCanvas from 'src/components/Syntax/SyntaxCanvas.vue'
@@ -240,6 +259,7 @@
       BButtonToolbar,
       BIconStarFill,
       Card,
+      PieChart,
       SyntaxArrow,
       SyntaxBox,
       SyntaxCanvas
@@ -251,6 +271,9 @@
     data () {
       return {
       	editingRow: {},
+        nlpChartOptions: {
+          cutoutPercentage: 70
+        },
         sessionToDelete: {},
         sessionToUpdate: {},
         show: false,
@@ -395,7 +418,7 @@
       }
     },
     methods: {
-      analyzeText(row, sessionId) {
+      analyzeText(row) {
         let request = {
           method: "POST",
           mode: "cors",
@@ -403,6 +426,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ inputText: row.item.transcript })
         };
+        let sessionId = row.item.sessionId;
         fetch(process.env.VUE_APP_API_URL + '/NLP/',request).then(response => response.json())
             .then(data => {
               let annotation = {  
@@ -413,6 +437,11 @@
                                 };
               store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
         });
+      },
+      analyzeTranscript(transcript) {
+        console.log('Analyze Transcript')
+        let validRows = transcript.filter((x)=>{return x.transcript.length > 2 && x.transcript != 'N/A'}).map((x)=>({item: x}))
+        validRows.forEach(this.analyzeText)
       },
       clearSearch() {
         store.dispatch('loadSpeechSessions', { limit: 5, search: null })

@@ -10,7 +10,18 @@ const syntaxColors = { 'VERB': 'red' ,
                        'PRON': '#1DCAE84D',
                        'NOUN': '#1D62F0',
                        'ADJ': 'green',
+                       'PUNCT': '#663300',
+                       'NUM': '#9966ff',
                        'DEFAULT': '#1D62F0' };
+
+const syntaxLabels = { 'VERB': 'Verb' ,
+                       'ADV': 'Adverb',
+                       'ADP': 'Adposition',
+                       'PRON': 'Pronoun',
+                       'NOUN': 'Noun',
+                       'ADJ': 'Adjective',
+                       'PUNCT': 'Punctuation',
+                       'NUM': 'Number' };
 
 const annotationNlpMapper = (annotation, nlp) => {
   const tagMap = new Map();
@@ -95,6 +106,9 @@ const onSpeechSnapshot= snapshot => {
               session.childNoOfTurns = childNoOfTurns
               session.childTranscriptWords = childTranscriptWords
               session.tagTotals = tagTotals
+              session.tagTotalLabels = Object.keys(tagTotals).map((x)=>{return syntaxLabels[x] || 'Unknown' });
+              session.tagTotalCounts = Object.values(tagTotals);
+              session.tagColors = Object.keys(tagTotals).map((x)=>{ return syntaxColors[x] }) 
               session.totalSpeechDuration = adultSpeechDuration + childSpeechDuration
               session.totalNoOfTurns = adultNoOfTurns + childNoOfTurns
               session.totalTranscriptWords = adultTranscriptWords + childTranscriptWords
