@@ -31,20 +31,31 @@
               <b-progress :value="audioProgress" :max="audioProgressMax" show-progress animated></b-progress> 
             </div>
           </div>
-      		<b-button v-if="this.recordingNewSession" @click="stopRecordingSession">
-      			<b-icon-pause-fill size="md" scale="1">
-	        	</b-icon-pause-fill>
-	        	Stop Recording
-      		</b-button>
-      		<b-button v-else @click="recordNewSession" variant="primary">
-      			<b-icon-mic-fill size="md" scale="1">
-	        	</b-icon-mic-fill>
-	        	Start Recording
-	        </b-button>  
+          <div class="input-group">
+            <select v-model="selectedLanguage" class="custom-select col-sm-5" id="language-select">
+              <option value="en-GB">English</option>
+              <option selected value="yue-Hant-HK">Cantonese</option>
+              <option value="zh-TW">Mandarin</option>
+            </select>
+            <div class="input-group-append">
+              <button v-if="this.recordingNewSession" class="btn-sm" @click="stopRecordingSession">
+                <b-icon-pause-fill size="md" scale="1">
+                </b-icon-pause-fill>
+                Stop Recording
+              </button>
+              <button v-else @click="recordNewSession" class="btn" >
+                <b-icon-mic-fill size="md" scale="1">
+                </b-icon-mic-fill>
+                Start Recording
+              </button>
+              <button class="btn btn-outline btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
+            </div>
+          </div>
+
           <b-button class="float-right" @click="showXml" v-if="speechSession" variant="primary">
             View XML
           </b-button>
-          <b-button v-b-modal="'upload-modal'">Upload Audio</b-button>
+          
 
           <!--Upload modal -->
           <b-modal @ok="processFile" id="upload-modal">
@@ -153,6 +164,7 @@
       	processor: null,   
         processingRecording: false,
         processingSession: false,
+        selectedLanguage: 'yue-Hant-HK',
       	session: {
       		sessionId: 0
       	},
@@ -382,9 +394,9 @@
         const filename = this.uploadFile.name;
         const uploader = new SocketIOFileUpload(this.socket);
         uploader.addEventListener('complete', (data)=> {
-          store.dispatch('createSpeechSession').then((session)=> {
+          store.dispatch('createSpeechSession', this.selectedLanguage).then((session)=> {
             this.$nextTick(() => {
-                this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename });
+                this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename, language: this.selectedLanguage });
                 this.processingSession = true;
             })
           })
@@ -394,9 +406,12 @@
       recordNewSession() {
           this.recordingStartTime = Date.now();
           this.recordingNewSession = true;
-          store.dispatch('createSpeechSession').then(()=> {
+          store.dispatch('createSpeechSession', this.selectedLanguage).then(()=> {
               this.$nextTick(() => {
-                  this.socket.emit('startGoogleCloudStream', this.speechSession.sessionId);
+                  this.socket.emit('startGoogleCloudStream', {
+                    sessionId: this.speechSession.sessionId,
+                    language: this.selectedLanguage
+                  });
                   this.streamingAudio = true;
                   const AudioContext = window.AudioContext || window.webkitAudioContext;
                   const context = new AudioContext({

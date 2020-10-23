@@ -891,13 +891,20 @@ table.wavesurfer-annotations
     background: #628ff9;
 }
 
+.ct-chart-ratio .ct-series-a .ct-bar {
+    stroke: rgba(234, 29, 200, 0.3);
+}
+
 .ct-chart-utterances .ct-series-a .ct-bar {
     stroke: rgba(234, 29, 200, 0.3);
 }
 
 .ct-chart-utterances .ct-series-b .ct-bar {
     stroke: #1DC8EA; 
+}
 
+#language-select.custom-select {
+    height: calc(1.5em + 0.75rem + 8px);
 }
 
 .collapsed > .when-open,

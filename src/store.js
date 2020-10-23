@@ -235,6 +235,9 @@ const store = new Vuex.Store({
     setCounts(state, value) {
       state.speechSessionPagination.total = value;
     },
+    setSpeechSession(state, value) {
+      state.speechSession = value;
+    },
   	setSpeechSessions(state, value) {
   		state.speechSessions = value;
   	},
@@ -270,21 +273,20 @@ const store = new Vuex.Store({
     }
   },
   actions: {
-  	async createSpeechSession({state, commit}) {
+  	async createSpeechSession({state, commit}, language) {
       const ref = speechSessionsCollection.doc();
       const id = ref.id;
       const session = {
         sessionId: id,
         comments: "",
+        language: language,
         createdOn: new Date()
       };
       await countsCollection.where("type", "==", "speechSession").get().then((snapshots)=>{
-        
            snapshots.forEach(function (doc) {
                 doc.ref.update({count: 1 }).then(()=>{
                      store.commit('setSessionsCount', 1);
-                 })
-                 
+                 })     
            });
       });
   		await speechSessionsCollection.add(session).then(()=> {
