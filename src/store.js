@@ -4,6 +4,11 @@ import moment from 'moment'
 import { childrenCollection, countsCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
+
+const languageLabels = {  'yue-Hant-HK': 'Cantonese',
+                          'zh-TW': 'Mandarin',
+                          'en-GB': 'English' };
+
 const syntaxColors = { 'VERB': 'red' ,
                        'ADV': 'orange',
                        'ADP': 'orange',
@@ -196,7 +201,9 @@ const store = new Vuex.Store({
           return data.adultNoOfTurns && data.childNoOfTurns
         }).sort((a,b)=>{ return a.date - b.date })
       return {
-        languages: Array.from(languageMap.keys()),
+        languages: Array.from(languageMap.keys()).map((languageCode)=>{
+          return languageLabels[languageCode] || 'Unknown'
+        }),
         languageComposition: Array.from(languageMap.values()).map((language)=>{
             return language.length
         }),
@@ -281,7 +288,7 @@ const store = new Vuex.Store({
       await countsCollection.where("type", "==", "speechSession").get().then((snapshots)=>{
            snapshots.forEach(function (doc) {
                 doc.ref.update({count: 1 }).then(()=>{
-                     store.commit('setSessionsCount', 1);
+                    store.commit('setSessionsCount', 1);
                  })     
            });
       });
@@ -289,7 +296,28 @@ const store = new Vuex.Store({
         return store.commit('setSpeechSession', session)
       })
   	},
-    async loadSpeechSessions({state, commit}, options={ limit: 20 }) {
+    async pruneSpeechSessions({state, commit}, { limit }) {
+      console.log('running prune')
+        speechSessionsCollection.orderBy('createdOn', 'desc').limit(limit).onSnapshot((snapshot)=>{
+          snapshot.docs.map(doc => {
+            let session = doc.data()
+            if (!session.manifestUrl) {
+              console.log('DELETING SESSION')
+              console.log(session)
+              doc.ref.delete()
+            }
+            else {
+              console.log('KEEP SESSION')
+              console.log(session)
+              doc.ref.update({ language: 'yue-Hant-HK', childId: session.childId || 2 })
+
+            }
+
+          })
+        })
+
+    },
+    async loadSpeechSessions({state, commit}, options={ limit: 200 }) {
       await(store.dispatch('fetchChildren'))
       const query = speechSessionsCollection.orderBy('createdOn', 'desc').where("childId", "==", state.currentChild.id)
 

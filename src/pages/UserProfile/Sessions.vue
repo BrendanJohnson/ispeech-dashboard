@@ -1,5 +1,11 @@
 <template>
   <div v-if="speechSessions.length">
+    <!-- Change Child modal -->
+    <b-modal id="change-child-modal" @ok="changeChild(childToChangeTo)">
+      <b-form-group label="Move to child:">
+        <b-form-radio v-for="child in children"  v-model="childToChangeTo" name="some-radios" :value="child.id">{{child.name}}</b-form-radio>
+      </b-form-group>
+    </b-modal>
     <!-- Delete modal -->
     <b-modal id="delete-modal" @ok="handleDeleteSession">
         <p>
@@ -40,6 +46,8 @@
                 <b-dropdown-item @click="showFileInNewWindow(session.manifestUrl)">View XML</b-dropdown-item>
                 <b-dropdown-item @click="showFileInNewWindow(session.timelineUrl)">View JSON</b-dropdown-item>
                 <b-dropdown-item v-b-modal="'delete-modal'" @click="sessionToDelete = session">Delete Session
+                </b-dropdown-item>
+                <b-dropdown-item v-b-modal="'change-child-modal'" @click="sessionToChange = session">Move Session to Child
                 </b-dropdown-item>
         </b-dropdown> 
         <a v-b-toggle class="float-right" :href="'#accordion-' + session.sessionId" @click.prevent><span class="when-open">Close</span><span class="when-closed">Open</span> Session</a>
@@ -274,6 +282,7 @@
         nlpChartOptions: {
           cutoutPercentage: 70
         },
+        sessionToChange: {},
         sessionToDelete: {},
         sessionToUpdate: {},
         show: false,
@@ -390,8 +399,7 @@
     },
     computed: {
       ...mapGetters({ speechSessions: 'getSpeechSessionsPaginated' }),
-      ...mapState(['speechSessionPagination'])
-    
+      ...mapState(['children', 'speechSessionPagination'])
     },
     watch: {
       immediate: true,
@@ -635,6 +643,9 @@
       },
       handleDeleteSession() {
         store.dispatch('deleteSession', this.sessionToDelete);  
+      },
+      changeChild(childId) {
+        store.dispatch('updateSession', { sessionId: this.sessionToChange.sessionId, childId: childId });  
       },
       handleUpdateTranscript() {
           store.dispatch('updateSession', this.updateModalSession) 
