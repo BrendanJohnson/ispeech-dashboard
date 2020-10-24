@@ -409,7 +409,7 @@
       recordNewSession() {
           this.recordingStartTime = Date.now();
           this.recordingNewSession = true;
-          store.dispatch('createSpeechSession', this.selectedLanguage).then(()=> {
+          store.dispatch('createSpeechSession', { childId: this.currentChild.id, language: this.selectedLanguage }).then(()=> {
               this.$nextTick(() => {
                   this.socket.emit('startGoogleCloudStream', {
                     sessionId: this.speechSession.sessionId,
