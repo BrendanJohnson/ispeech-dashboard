@@ -273,15 +273,11 @@ const store = new Vuex.Store({
     }
   },
   actions: {
-  	async createSpeechSession({state, commit}, language) {
+  	async createSpeechSession({state, commit}, session) {
       const ref = speechSessionsCollection.doc();
       const id = ref.id;
-      const session = {
-        sessionId: id,
-        comments: "",
-        language: language,
-        createdOn: new Date()
-      };
+      session.createdOn = new Date();
+      session.sessionId = id;
       await countsCollection.where("type", "==", "speechSession").get().then((snapshots)=>{
            snapshots.forEach(function (doc) {
                 doc.ref.update({count: 1 }).then(()=>{

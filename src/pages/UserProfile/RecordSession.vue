@@ -232,6 +232,9 @@
         }
       }
     },
+    created() {
+      store.dispatch('fetchChildren')
+    },
     mounted() {
       console.log('Establishing socket connection with: ' + process.env.VUE_APP_API_URL);
 
@@ -317,7 +320,7 @@
       })
     },
     computed: {
-      ...mapState(['speechSession'])
+      ...mapState(['currentChild', 'speechSession'])
     },
     filters: {
       formatDate(val) {
@@ -394,7 +397,7 @@
         const filename = this.uploadFile.name;
         const uploader = new SocketIOFileUpload(this.socket);
         uploader.addEventListener('complete', (data)=> {
-          store.dispatch('createSpeechSession', this.selectedLanguage).then((session)=> {
+          store.dispatch('createSpeechSession', { childId: this.currentChild.id, language: this.selectedLanguage }).then((session)=> {
             this.$nextTick(() => {
                 this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename, language: this.selectedLanguage });
                 this.processingSession = true;
