@@ -30,6 +30,7 @@
     </b-form-group>
     <div class="mx-auto">
       <b-button variant="primary" @click="changeChild(child)">Switch to child</b-button> 
+      <b-button @click="deleteChild(child)">Delete child</b-button> 
    		<b-button variant="primary" class="float-right"  @click="saveChild(child)">Save changes</b-button> 
     </div>
   </b-card>
@@ -150,6 +151,9 @@
       }
     },
     methods: {
+        deleteChild(child) {
+          store.dispatch('deleteChild', child)
+        },
         newChild() {
           store.dispatch('addChild')
         },

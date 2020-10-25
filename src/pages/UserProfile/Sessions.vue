@@ -94,6 +94,7 @@
               </div>
             </b-card-header>
             <div>
+              <p v-if="nlpInProgress">Analyzing text data: {{nlpProgress}}/{{nlpTotal}}</p>
               <pie-chart :chart-data="{
                   datasets: [{
                     data: session.tagTotalCounts,
@@ -278,7 +279,11 @@
     },
     data () {
       return {
+        childToChangeTo: null,
       	editingRow: {},
+        nlpInProgress: false,
+        nlpProgress: 0,
+        nlpTotal: null,
         nlpChartOptions: {
           cutoutPercentage: 70
         },
@@ -437,6 +442,8 @@
         let sessionId = row.item.sessionId;
         fetch(process.env.VUE_APP_API_URL + '/NLP/',request).then(response => response.json())
             .then(data => {
+              this.nlpProgress++;
+              if(this.nlpProgress >= this.nlpTotal) this.nlpInProgress = false;
               let annotation = {  
                                   annotationId: row.item.alignable_id,
                                   starred: !!row.item.starred,
@@ -449,6 +456,9 @@
       analyzeTranscript(transcript) {
         console.log('Analyze Transcript')
         let validRows = transcript.filter((x)=>{return x.transcript.length > 2 && x.transcript != 'N/A'}).map((x)=>({item: x}))
+        this.nlpInProgress = true;
+        this.nlpProgress = 0;
+        this.nlpTotal = validRows.length;
         validRows.forEach(this.analyzeText)
       },
       clearSearch() {

@@ -352,12 +352,29 @@ const store = new Vuex.Store({
     },
     async addChild({state, commit}, child) {
       let newChild = child || {
+        name: 'New Child',
         id: Math.max.apply(Math, state.children.map((x) => { return x.id; })) + 1
       }
-      await childrenCollection.add(newChild);
+      await childrenCollection.add(newChild).then(response=>{
+        state.children.push(newChild)
+        commit('setChildren', state.children)
+      });
     },
     async setChild({state, commit}, child) {
       store.commit('setCurrentChild', child);
+    },
+    async deleteChild({state, commit}, child) {
+      await childrenCollection
+              .where("id", "==", child.id)
+              .get()
+              .then(docs => {
+                  child.hidden = true;
+                  docs.forEach(doc => {
+                    doc.ref.update(child).then(response=>{
+                      commit('setChildren', state.children.filter(x=>{ return x.id != child.id; }))
+                    })
+                  })
+              })
     },
     async updateChild({state, commit}, child) {
       await childrenCollection
@@ -439,9 +456,10 @@ const store = new Vuex.Store({
       
       Promise.all(snapshot.docs.map(doc => {
             let child = doc.data()
+            if (child.hidden) return null;
             child.quotes = []
             return child
-      })).then(children => {
+      }).filter(x=>!!x)).then(children => {
               commit('setChildren', children)
           });
     },
