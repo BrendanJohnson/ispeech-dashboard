@@ -20,20 +20,24 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const childrenCollection = db.collection('children')
 const speechSessionsCollection = db.collection('speech_sessions')
+const usersCollection = db.collection('users');
 const annotationsCollection = db.collectionGroup('annotations')
 const countsCollection = db.collectionGroup('counts')
 
-
 // Firebase auth
-const auth = firebase.auth().onAuthStateChanged(user => {
-  store.dispatch("fetchUser", user);
+let currentUser;
+const auth = firebase.auth().onAuthStateChanged(user => {  
+    currentUser = firebase.auth().currentUser;
+    store.dispatch("fetchUser", user);
 });
 
 export {
 	auth,
 	db,
+    currentUser,
     annotationsCollection,
     childrenCollection,
     countsCollection,
-	speechSessionsCollection
+	speechSessionsCollection,
+    usersCollection
 }

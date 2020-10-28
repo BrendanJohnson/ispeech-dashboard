@@ -1,7 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import moment from 'moment'
-import { childrenCollection, countsCollection, speechSessionsCollection, annotationsCollection } from "./firebase"
+import { childrenCollection, countsCollection, currentUser, speechSessionsCollection, usersCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
 
@@ -27,6 +27,10 @@ const syntaxLabels = { 'VERB': 'Verb' ,
                        'ADJ': 'Adjective',
                        'PUNCT': 'Punctuation',
                        'NUM': 'Number' };
+
+const addNewUserToFirestore = (user) => {
+  return usersCollection.doc(currentUser.uid).set(user);
+}
 
 const annotationNlpMapper = (annotation, nlp) => {
   const tagMap = new Map();
@@ -163,9 +167,6 @@ const store = new Vuex.Store({
     speechSessions: []
   },
   getters: {
-    getCurrentChild: (state) => {
-
-    },
     getPagination: (state) => {
       return state.speechSessionPagination
     },
@@ -232,9 +233,6 @@ const store = new Vuex.Store({
   mutations: {
     setChildren(state, value) {
       state.children = value;
-      if (!state.currentChild) {
-        state.currentChild = value[0];
-      }
     },
     setCurrentChild(state, value) {
       state.currentChild = value;
@@ -361,7 +359,22 @@ const store = new Vuex.Store({
       });
     },
     async setChild({state, commit}, child) {
-      store.commit('setCurrentChild', child);
+      let docRef = usersCollection.doc(currentUser.uid);  
+      const userDetails = {
+        defaultChildId: child.id
+      };
+      return docRef.get()
+            .then(doc => {
+              if (doc.exists) {
+                return docRef.update(userDetails).then(store.commit('setCurrentChild', child))
+              } else {
+                // Add User Details to Firestore
+                return addNewUserToFirestore(userDetails).then(store.commit('setCurrentChild', child));
+              }
+            })
+            .catch(error => {
+                console.error('Setting default child failed" ' + error);
+            });
     },
     async deleteChild({state, commit}, child) {
       await childrenCollection
@@ -451,27 +464,43 @@ const store = new Vuex.Store({
                 })
               })
     },
-    async fetchChildren({ commit }) {
+    async fetchChildren({ state, commit }) {
+      await(store.dispatch('fetchUser'))
       let snapshot = await childrenCollection.get()
       
-      Promise.all(snapshot.docs.map(doc => {
+      return Promise.all(snapshot.docs.map(doc => {
             let child = doc.data()
             if (child.hidden) return null;
             child.quotes = []
             return child
       }).filter(x=>!!x)).then(children => {
+              console.log('setting children');
+              console.log(state.user)
+              if (!state.currentChild) {
+                commit('setCurrentChild',
+                        children.filter(x=>{ return x.id == state.user.data.defaultChildId})[0] || children[0]); 
+              }
               commit('setChildren', children)
           });
     },
-    fetchUser({ commit }, user) {
+    async fetchUser({ state, commit }, user) {
       commit("SET_LOGGED_IN", user !== null);
       if (user) {
-        commit("SET_USER", {
-          displayName: user.displayName,
-          email: user.email
-        });
+        let userDoc = await usersCollection.doc(user.uid).get();
+        if (userDoc.exists) {
+          
+          return commit("SET_USER", { ...userDoc.data(),
+                                               displayName: user.displayName,
+                                               email: user.email });
+        }
+        else {
+          return commit("SET_USER", { displayName: user.displayName,
+                                               email: user.email });
+        }
+                       
+
       } else {
-        commit("SET_USER", null);
+        return commit("SET_USER", null);
       }
     },
   }

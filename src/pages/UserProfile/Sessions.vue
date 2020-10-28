@@ -95,6 +95,7 @@
             </b-card-header>
             <div>
               <p v-if="nlpInProgress">Analyzing text data: {{nlpProgress}}/{{nlpTotal}}</p>
+              <p v-if="session.finishedNlpAnalysis">Analysis complete, please refresh page to see results</p>
               <pie-chart :chart-data="{
                   datasets: [{
                     data: session.tagTotalCounts,
@@ -183,6 +184,7 @@
   </div>
 </template>
 <script>
+  import pLimit from 'p-limit';
   import { BCard, BCollapse, BIcon, BIconEmojiSmile, BIconEmojiNeutral, BIconEmojiFrown, BIconEmojiDizzy, BIconEmojiLaughing, BIconQuestionCircle, BButtonToolbar, BIconFilePlus, BIconMic, BIconStar, BIconStarFill } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import PieChart from 'src/components/Charts/PieChart.js'
@@ -195,6 +197,7 @@
   import parseCsv from 'csv-parse';
   import io from 'socket.io-client';
   import store from '../../store'
+  import rateLimiter from '../../throttledFetch'
   import timelineUtil from '../../timelineUtil'
   import WaveSurfer from 'wavesurfer.js'
   import Regions from 'wavesurfer.js/dist/plugin/wavesurfer.regions.js'
@@ -208,6 +211,7 @@
     else if (sentiment > -0.5) return 'frown';
     else return 'dizzy'
   }
+  const apiLimit = pLimit(5);
 
   const itemMapper = (session, annotation, alignable_id) => {
       return {
@@ -440,26 +444,36 @@
           body: JSON.stringify({ inputText: row.item.transcript })
         };
         let sessionId = row.item.sessionId;
-        fetch(process.env.VUE_APP_API_URL + '/NLP/',request).then(response => response.json())
+        return fetch(process.env.VUE_APP_API_URL + '/NLP/',request).then(response => response.json())
             .then(data => {
               this.nlpProgress++;
-              if(this.nlpProgress >= this.nlpTotal) this.nlpInProgress = false;
               let annotation = {  
                                   annotationId: row.item.alignable_id,
                                   starred: !!row.item.starred,
                                   transcript: row.item.transcript,
                                   nlp: data
                                 };
-              store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
+              return store.dispatch('updateAnnotation',{ annotation: annotation, sessionId: sessionId })
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          this.nlpProgress++;
         });
       },
       analyzeTranscript(transcript) {
         console.log('Analyze Transcript')
+        let session = this.speechSessions.filter((session) => {
+          return session.sessionId == transcript[0].sessionId;
+        })[0];
         let validRows = transcript.filter((x)=>{return x.transcript.length > 2 && x.transcript != 'N/A'}).map((x)=>({item: x}))
         this.nlpInProgress = true;
         this.nlpProgress = 0;
         this.nlpTotal = validRows.length;
-        validRows.forEach(this.analyzeText)
+
+        Promise.all(validRows.map(row => apiLimit(() => rateLimiter(this.analyzeText(row))))).then(()=>{
+          this.nlpInProgress = false;
+          session.finishedNlpAnalysis = true;        
+        })
       },
       clearSearch() {
         store.dispatch('loadSpeechSessions', { limit: 5, search: null })
