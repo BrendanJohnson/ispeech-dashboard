@@ -65,7 +65,7 @@
             <h4>Loading session statistics...</h4>
           </div>
         </div>
-        <div  v-if="adultChildRatioData && !reloading" class="col-md-4">
+        <div v-if="adultChildRatioData && !reloading" class="col-md-4">
           <card>
             <template slot="header">
                <h4 class="card-title">Recommendations</h4>
@@ -124,7 +124,6 @@
   </div>
 </template>
 <script>
-  
   import { mapGetters } from 'vuex'
   import moment from 'moment'
   import store from '../store'
@@ -150,10 +149,7 @@
                     scales: {
                       xAxes: [{
                         type: 'time',
-                         ticks: {
-                                  autoSkip: true,
-                                  maxTicksLimit: 7
-                                },
+                         distribution: 'series',
                          time: {
                                  displayFormats: {
                                    'millisecond': 'MMM DD',
@@ -182,11 +178,13 @@
               {
                 label: 'Child speech % (by time)',
                 backgroundColor: '#1DC8EA',
+                lineTension: 0.2,
                 data: this.stats.adultChildRatio.speechPercentage,
               },
               {
                 label: 'Child speech % (by turns)',
                 backgroundColor: 'rgba(234, 29, 200, 0.3)',
+                lineTension: 0.2,
                 data: this.stats.adultChildRatio.turnsPercentage
               }
             ]
