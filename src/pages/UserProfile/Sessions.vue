@@ -465,7 +465,7 @@
         let session = this.speechSessions.filter((session) => {
           return session.sessionId == transcript[0].sessionId;
         })[0];
-        let validRows = transcript.filter((x)=>{return x.transcript.length > 2 && x.transcript != 'N/A'}).map((x)=>({item: x}))
+        let validRows = transcript.filter((x)=>{return x.transcript && (x.transcript.length > 2 && x.transcript != 'N/A') }).map((x)=>({item: x}))
         this.nlpInProgress = true;
         this.nlpProgress = 0;
         this.nlpTotal = validRows.length;
@@ -547,7 +547,6 @@
 
 
         // Proxy actually points to https://storage.googleapis.com/ispeech-bucket/raw_audio
-        //  this.wavesurfers[session.sessionId].load('/audio/putonghua_030120_slice.mp3');
           this.wavesurfers[session.sessionId].load(session.audioUrl);
 
           var wavesurfer = this.wavesurfers[session.sessionId];
@@ -559,7 +558,7 @@
           var elanReadyFactory = function(wavesurfer, tableItems) {
            console.log('RUNNING ELAN READY FACTORY')
             return function() {
-              for (var i = 0; i <= wavesurfer.elan.renderedAlignable.length; i++) {
+               for (var i = 0; i <= wavesurfer.elan.renderedAlignable.length; i++) {
                   var region = wavesurfer.elan.renderedAlignable[i]
                   if (region) {
                     var alignable_id = region.id;
@@ -602,7 +601,10 @@
                     tableItems.push(item);
                   }
               }
+
+
               console.log('data READY')
+
               session.loaded = true;
             };
            
@@ -619,22 +621,27 @@
 
                 if (annotation) {
                   var row = rowFn(session.sessionId + '_' + annotation.id, session.sessionId);
-                  prevRow && prevRow.classList.remove('table-success');
-                  prevRow = row;
-                  row.classList.add('table-success');
-                  var before = row.previousSibling;
-                  var after = row.nextSibling;
-                  if (after && after.dataset) {
-                    scrollFn(after.dataset.pk, session.sessionId);
+                  if (row) {
+                      prevRow && prevRow.classList.remove('table-success');
+                      prevRow = row;
+                      row.classList.add('table-success');
+                      var before = row.previousSibling;
+                      var after = row.nextSibling;
+                      if (after && after.dataset) {
+                        scrollFn(after.dataset.pk, session.sessionId);
+                      }
+                      // Region
+                      region = wavesurfer.addRegion({
+                          start: annotation.start,
+                          end: annotation.end,
+                          resize: false,
+                          drag: false,
+                          color: 'rgba(223, 240, 216, 0.7)'
+                      });
+
+
                   }
-                  // Region
-                  region = wavesurfer.addRegion({
-                      start: annotation.start,
-                      end: annotation.end,
-                      resize: false,
-                      drag: false,
-                      color: 'rgba(223, 240, 216, 0.7)'
-                  });
+
                 }
               }      
             }
@@ -642,7 +649,9 @@
           var onRegionClick = function(region) {
             wavesurfer.play(region.start)
           }
-          this.wavesurfers[session.sessionId].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
+          //this.wavesurfers[session.sessionId].on('audioprocess', onProgressFactory(this.getRow, this.scrollToRow));
+
+
           this.wavesurfers[session.sessionId].elan.on('ready', elanReadyFactory(wavesurfer, this.items[session.sessionId]));
           this.wavesurfers[session.sessionId].on('region-click', onRegionClick);
 
