@@ -32,10 +32,14 @@
             </div>
           </div>
           <div class="input-group">
-            <select v-model="selectedLanguage" class="custom-select col-sm-5" id="language-select">
+            <select v-model="selectedLanguage" class="custom-select col-sm-2" id="language-select">
               <option value="en-GB">English</option>
               <option selected value="yue-Hant-HK">Cantonese</option>
               <option value="zh-TW">Mandarin</option>
+            </select>
+            <select v-model="analysisMode" class="custom-select col-sm-2" id="language-select">
+              <option selected value="custom">Custom Model</option>
+              <option value="standard">Standard Model</option>
             </select>
             <div class="input-group-append">
               <button v-if="this.recordingNewSession" class="btn-sm" @click="stopRecordingSession">
@@ -149,6 +153,7 @@
     },
     data () {
       return {
+        analysisMode: 'custom',
         audioData: null,
         audioDistributedProcessing: false,
         audioProgress: 0,
@@ -399,7 +404,7 @@
         uploader.addEventListener('complete', (data)=> {
           store.dispatch('createSpeechSession', { childId: this.currentChild.id, language: this.selectedLanguage }).then((session)=> {
             this.$nextTick(() => {
-                this.socket.emit('startProcessingFile', { sessionId: this.speechSession.sessionId, filename: filename, language: this.selectedLanguage });
+                this.socket.emit('startProcessingFile', { analysisMode: this.analysisMode, sessionId: this.speechSession.sessionId, filename: filename, language: this.selectedLanguage });
                 this.processingSession = true;
             })
           })

@@ -94,18 +94,18 @@
       </div>
       <div class="row">
         <div class="col-md-8">
-          <div class="card" v-if="utterancesData && !reloading">
+          <div class="card" v-if="turnsData && !reloading">
             <div class="card-header">
               <h4 class="card-title">No. of Utterances</h4>
                 <p class="card-category">All sessions to date</p>
                 <hr>
             </div>
             <div class="card-body">
-              <bar-chart :chart-data="utterancesData" :chart-options="utterancesOptions"></bar-chart>
+              <bar-chart :chart-data="turnsData" :chart-options="turnsOptions"></bar-chart>
             </div>
           </div>
         </div>
-        <div  v-if="adultChildRatioData && !reloading" class="col-md-4">
+        <div v-if="adultChildRatioData && !reloading" class="col-md-4">
           <chart-card :chart-data="pieChart.data" chart-type="Pie">
             <template slot="header">
               <h4 class="card-title">Langauge Spoken</h4>
@@ -177,13 +177,13 @@
             datasets: [
               {
                 label: 'Child speech % (by time)',
-                backgroundColor: '#1DC8EA',
+                backgroundColor: '#1DC7EA',
                 lineTension: 0.2,
                 data: this.stats.adultChildRatio.speechPercentage,
               },
               {
                 label: 'Child speech % (by turns)',
-                backgroundColor: 'rgba(234, 29, 200, 0.3)',
+                backgroundColor: '#1F77D0',
                 lineTension: 0.2,
                 data: this.stats.adultChildRatio.turnsPercentage
               }
@@ -193,7 +193,7 @@
         else return null
 
       },
-      utterancesData() {
+      turnsData() {
         if (this.stats && this.stats.childNoOfTurns) {
           return {
             labels: this.stats.sessionDates,
@@ -212,14 +212,13 @@
         else return null
 
       },
-      utterancesOptions() {
+      turnsOptions() {
         return {    
                     responsive: true,
                     indexAxis: 'y',
-
                     scales: {
                       xAxes: [{
-                        stacked: true,
+                        stacked: false,
                         barThickness: 25,
                         offset: true,
                         display: true,
