@@ -39,7 +39,7 @@
     <div class="accordion"  role="tablist">
     <b-card v-for="(session, i) in speechSessions" :key="session.sessionId">
       <b-card-header header-tag="header" slot="header" role="tab" class="card-title">
-        {{session.audioFilename ? session.audioFilename.split('/')[1] : 'Session'}}  ({{session.createdOn | formatDate}})
+        {{session.name || (session.audioFilename ? session.audioFilename.split('/')[1] : 'Session')}}  ({{session.createdOn | formatDate}})({{session.analysisMode}})
        <b-dropdown variant="link" id="view-data-dropdown" size="sm" text="Advanced">
                 <b-dropdown-item @click="downloadCsv(session.timelineUrl)">Download CSV</b-dropdown-item>
                 <b-dropdown-item @click="sessionToUpdate = session" v-b-modal="'upload-modal'">Upload CSV</b-dropdown-item>

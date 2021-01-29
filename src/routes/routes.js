@@ -5,6 +5,7 @@ import NotFound from '../pages/NotFoundPage.vue'
 // Admin pages
 import ChildProfile from 'src/pages/ChildProfile.vue'
 import Login from 'src/pages/Login.vue'
+import ManageTeachers from 'src/pages/ManageTeachers.vue'
 import Dashboard from 'src/pages/Dashboard.vue'
 import Register from 'src/pages/Register.vue'
 import NewSession from 'src/pages/NewSession.vue'
@@ -50,6 +51,11 @@ const routes = [
         path: 'profile',
         name: 'Profile',
         component: ChildProfile
+      },
+      {
+        path: 'teachers',
+        name: 'Teachers',
+        component: ManageTeachers
       },
       {
         path: 'newsession',

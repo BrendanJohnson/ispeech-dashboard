@@ -1,4 +1,5 @@
 <template>
+  <div class="container">
     <card>
         <h4 slot="header" class="card-title">
             New Session
@@ -13,13 +14,13 @@
           <div v-if="processingRecording" class="text-center">
               <b-spinner variant="primary" label="Text Centered"></b-spinner>
           </div>
-          <div v-if="audioDistributedProcessing" class="text-center">
+          <div v-if="processingSession && audioDistributedProcessing" class="text-center">
              <div class="container">
                 <div>Analyzing audio file...</div>
                 <b-spinner variant="primary" label="Text Centered"></b-spinner>
               </div>
           </div>
-          <div v-if="uploadingAudio && audioUploadFileSize" class="text-center">
+          <div v-if="processingSession && uploadingAudio && audioUploadFileSize" class="text-center">
              <div class="container">
                 <div>Uploading audio file...</div>
                 <b-progress :value="audioProgressFileSize" :max="audioUploadFileSize" show-progress animated></b-progress>  
@@ -40,6 +41,7 @@
             <select v-model="analysisMode" class="custom-select col-sm-2" id="language-select">
               <option selected value="custom">Custom Model</option>
               <option value="standard">Standard Model</option>
+              <option value="split">Pre-split</option>
             </select>
             <div class="input-group-append">
               <button v-if="this.recordingNewSession" class="btn-sm" @click="stopRecordingSession">
@@ -55,14 +57,21 @@
               <button class="btn btn-outline btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
             </div>
           </div>
+          
 
           <b-button class="float-right" @click="showXml" v-if="speechSession" variant="primary">
             View XML
           </b-button>
           
 
-          <!--Upload modal -->
-          <b-modal @ok="processFile" id="upload-modal">
+          <!-- Standard Upload modal -->
+          <b-modal @ok="processFile(false)" id="upload-modal">
+            <b-form-file v-model="uploadFile"></b-form-file>
+          </b-modal>
+
+          <!-- Features Upload modal -->
+          <b-modal @ok="processFile('child')" id="features-upload-modal">
+            <p>Please select an audio file to upload. The audio file must only speech for the current child.</p>
             <b-form-file v-model="uploadFile"></b-form-file>
           </b-modal>
       	</div>
@@ -83,7 +92,7 @@
 		                 		</b-icon-file-plus>
 		                  	</b-button>
 		                  	<b-button variant="outline-primary">  
-		                		<b-icon-mic size="sm" scale="1" class="float-right" @click="toggleEdit($event, row, true)">
+		                		<b-icon-mic size="sm" scale="1" class="float-right"  @click="toggleEdit($event, row, true)">
 		                		</b-icon-mic>
 		                  	</b-button>
 		                </b-button-group>
@@ -98,6 +107,58 @@
 	        </b-table>
 	    </div>
     </card>
+    <card>
+      <h4 slot="header" class="card-title">
+          Custom Model Data for {{currentChild.name}}
+      </h4>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Audio file name</th>
+            <th scope="col">Language</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="feature in currentChild.features" :key="feature.name">
+            <th scope="row">1</th>
+            <td>{{ feature.name }}</td>
+            <td>{{ feature.language }}</td>
+          </tr>
+        </tbody>
+      </table>
+       <div v-if="audioFeatureProcessingFinishedMessage" class="card col-sm-3 mx-auto text-center bg-success">
+            Audio Feature Added
+      </div>
+          <div v-if="processingFeatures && audioDistributedProcessing" class="text-center">
+             <div class="container">
+                <div>Analyzing audio file...</div>
+                <b-spinner variant="primary" label="Text Centered"></b-spinner>
+              </div>
+          </div>
+          <div v-if="processingFeatures && uploadingAudio && audioUploadFileSize" class="text-center">
+             <div class="container">
+                <div>Uploading audio file...</div>
+                <b-progress :value="audioProgressFileSize" :max="audioUploadFileSize" show-progress animated></b-progress>  
+             </div> 
+          </div>
+      <div v-if="processingFeatures && audioProgressMax" class="text-center">
+            <div class="container">
+              <div>Analyzing audio file...</div>
+              <b-progress :value="audioProgress" :max="audioProgressMax" show-progress animated></b-progress> 
+            </div>
+      </div>
+      <div class="input-group">
+        <select v-model="selectedSpeakerType" class="custom-select col-sm-2" id="language-select">
+          <option value="child" >Current Child</option>
+          <option value="adult">Adult</option>
+        </select>
+        <div class="input-group-append">
+          <button class="btn btn-outline btn-primary" v-b-modal="'features-upload-modal'">Upload Audio</button>
+        </div>
+      </div>
+    </card>
+  </div>
 </template>
 <script>
   import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill, BProgress } from 'bootstrap-vue'
@@ -157,6 +218,7 @@
         audioData: null,
         audioDistributedProcessing: false,
         audioProgress: 0,
+        audioFeatureProcessingFinishedMessage: null,
         audioProcessingFinishedMessage: null,
         audioProgressMax: null,
         audioProgressFileSize: 0,
@@ -168,8 +230,10 @@
         mic: null,
       	processor: null,   
         processingRecording: false,
+        processingFeatures: false,
         processingSession: false,
         selectedLanguage: 'yue-Hant-HK',
+        selectedSpeakerType: 'child',
       	session: {
       		sessionId: 0
       	},
@@ -254,9 +318,15 @@
       let speechRecognitionText = this.speechRecognitionText;
       let items = this.items;
 
+      this.socket.on('featuresResult', result => {
+         this.processingRecording = false;
+         this.processingFeatures = false;
+         this.audioDistributedProcessing = false;
+         this.audioFeatureProcessingFinishedMessage = true;
+         console.log(result)
+      })
+
       this.socket.on('timestampsResult', result => {
-        console.log('timestamp result')
-        console.log(result)
          this.processingRecording = false;
          this.processingSession = false;
          this.audioDistributedProcessing = false;
@@ -397,15 +467,44 @@
         const waveformTensor = this.audioData.waveform;
         waveformTensor.print();
       },
-      processFile() {
-        this.audioProcessingFinishedMessage = false;
-        const filename = this.uploadFile.name;
+      processFile(speakerType) {
+        if (speakerType) {
+          this.audioFeatureProcessingFinishedMessage = false;
+        }
+        else {
+          this.audioProcessingFinishedMessage = false;
+        } 
+        
         const uploader = new SocketIOFileUpload(this.socket);
+
         uploader.addEventListener('complete', (data)=> {
-          store.dispatch('createSpeechSession', { childId: this.currentChild.id, language: this.selectedLanguage }).then((session)=> {
+          store.dispatch(speakerType ? 'createSpeakerFeature': 'createSpeechSession', {
+            childId: this.currentChild.id,
+            language: this.selectedLanguage,
+            name: this.uploadFile.name
+          }).then((session)=> {
+
+            const processingOptions = {
+                filename: this.uploadFile.name,
+                analysisMode: this.analysisMode
+            };
+
             this.$nextTick(() => {
-                this.socket.emit('startProcessingFile', { analysisMode: this.analysisMode, sessionId: this.speechSession.sessionId, filename: filename, language: this.selectedLanguage });
-                this.processingSession = true;
+                if(speakerType) {
+                  this.socket.emit('startProcessingFeatureAudio', {...processingOptions, ...{
+                    analysisMode: 'custom',
+                    speakerId: this.currentChild.id,
+                    speakerType: speakerType
+                  }});
+                  this.processingFeatures = true;
+                }
+                else {
+                  this.socket.emit('startProcessingFile', {...processingOptions, ...{
+                    language: this.selectedLanguage,
+                    sessionId: this.speechSession.sessionId
+                  }});
+                  this.processingSession = true;
+                }
             })
           })
         })

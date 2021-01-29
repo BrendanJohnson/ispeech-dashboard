@@ -1,7 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import moment from 'moment'
-import { childrenCollection, countsCollection, currentUser, speechSessionsCollection, usersCollection, annotationsCollection } from "./firebase"
+import { childrenCollection, childFeaturesCollection, countsCollection, currentUser, speechSessionsCollection, teachersCollection, teacherFeaturesCollection, usersCollection, annotationsCollection } from "./firebase"
 
 Vue.use(Vuex);
 
@@ -158,6 +158,7 @@ const store = new Vuex.Store({
     children: [],
     currentChild: null,
     lastVisible: null,
+    teachers: [],
     user: {
       loggedIn: false,
       data: null
@@ -246,6 +247,9 @@ const store = new Vuex.Store({
   	setSpeechSessions(state, value) {
   		state.speechSessions = value;
   	},
+    setTeachers(state, value) {
+      state.teachers = value;
+    },
     setChildQuotes(state, value) {
         state.children = state.children.map(child=>{
             if(value) child.quotes.push(value)       
@@ -278,6 +282,18 @@ const store = new Vuex.Store({
     }
   },
   actions: {
+    async createSpeakerFeature({state, commit}, { childId, name, language }) {
+      await childrenCollection.where("id", "==", childId)
+                              .get()
+                              .then(docs => {
+                                docs.forEach(doc => {
+                                  const childFeaturesCollection = childrenCollection.doc(doc.id).collection('child_features');
+                                  childFeaturesCollection.add({
+                                    name, language
+                                  })
+                                })
+                              })
+    },
   	async createSpeechSession({state, commit}, session) {
       const ref = speechSessionsCollection.doc();
       const id = ref.id;
@@ -294,6 +310,18 @@ const store = new Vuex.Store({
         return store.commit('setSpeechSession', session)
       })
   	},
+    async createTeacherFeature({state, commit}, { teacherId, name, language }) {
+      await teachersCollection.where("id", "==", teacherId)
+                              .get()
+                              .then(docs => {
+                                docs.forEach(doc => {
+                                  const teacherFeaturesCollection = teachersCollection.doc(doc.id).collection('teacher_features');
+                                  teacherFeaturesCollection.add({
+                                    name, language
+                                  })
+                                })
+                              })
+    },
     async pruneSpeechSessions({state, commit}, { limit }) {
       console.log('running prune')
         speechSessionsCollection.orderBy('createdOn', 'desc').limit(limit).onSnapshot((snapshot)=>{
@@ -314,6 +342,24 @@ const store = new Vuex.Store({
           })
         })
 
+    },
+    async loadTeachers({state, commit}) {
+        let snapshot = await teachersCollection.get()
+        return Promise.all(snapshot.docs.map(doc => {
+              let teacher = doc.data()
+              if (teacher.hidden) return null;
+
+              return teachersCollection.doc(doc.id).collection('teacher_features').get().then(teacher_features=>{
+                  teacher.features = teacher_features.docs.map(feature_doc=>{
+                      return feature_doc.data()
+                  }).filter(x=>x.name)
+                  return teacher
+              })     
+              return teacher   
+              
+        }).filter(x=>!!x)).then(teachers => {
+                commit('setTeachers', teachers)
+        });
     },
     async loadSpeechSessions({state, commit}, options={ limit: 200 }) {
       await(store.dispatch('fetchChildren'))
@@ -356,6 +402,17 @@ const store = new Vuex.Store({
       await childrenCollection.add(newChild).then(response=>{
         state.children.push(newChild)
         commit('setChildren', state.children)
+      });
+    },
+    async addTeacher({state, commit}, teacher) {
+      let newTeacher = teacher || {
+        name: 'New Teacher',
+        id: Math.max.apply(Math, state.teachers.map((x) => { return x.id; })) + 1,
+        type: 'teacher'
+      }
+      await teachersCollection.add(newTeacher).then(response=>{
+        state.teachers.push(newTeacher)
+        commit('setTeachers', state.teachers)
       });
     },
     async setChild({state, commit}, child) {
@@ -472,7 +529,14 @@ const store = new Vuex.Store({
             let child = doc.data()
             if (child.hidden) return null;
             child.quotes = []
-            return child
+
+            return childrenCollection.doc(doc.id).collection('child_features').get().then(child_features=>{
+                child.features = child_features.docs.map(feature_doc=>{
+                    return feature_doc.data()
+                }).filter(x=>x.name)
+                return child
+            })        
+            
       }).filter(x=>!!x)).then(children => {
               console.log('setting children');
               console.log(state.user)

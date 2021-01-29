@@ -20,9 +20,12 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const childrenCollection = db.collection('children')
 const speechSessionsCollection = db.collection('speech_sessions')
+const teachersCollection = db.collection('teachers')
 const usersCollection = db.collection('users');
 const annotationsCollection = db.collectionGroup('annotations')
 const countsCollection = db.collectionGroup('counts')
+const childFeaturesCollection = db.collectionGroup('child_features')
+const teacherFeaturesCollection = db.collectionGroup('teacher_features')
 
 // Firebase auth
 let currentUser;
@@ -36,8 +39,11 @@ export {
 	db,
     currentUser,
     annotationsCollection,
+    childFeaturesCollection,
     childrenCollection,
     countsCollection,
 	speechSessionsCollection,
+    teachersCollection,
+    teacherFeaturesCollection,
     usersCollection
 }
