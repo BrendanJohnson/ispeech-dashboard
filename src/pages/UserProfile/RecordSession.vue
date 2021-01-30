@@ -43,6 +43,12 @@
               <option value="standard">Standard Model</option>
               <option value="split">Pre-split</option>
             </select>
+            <select v-model="selectedTeacherId" class="custom-select col-sm-2" id="language-select" >
+              <option :value="null" disabled>Select Teacher</option>
+              <option v-for="teacher in teachers" v-bind:value="teacher.id">
+                {{ teacher.name }}
+              </option>
+            </select>
             <div class="input-group-append">
               <button v-if="this.recordingNewSession" class="btn-sm" @click="stopRecordingSession">
                 <b-icon-pause-fill size="md" scale="1">
@@ -54,7 +60,7 @@
                 </b-icon-mic-fill>
                 Start Recording
               </button>
-              <button class="btn btn-outline btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
+              <button :disabled="!selectedTeacherId" class="btn btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
             </div>
           </div>
           
@@ -234,6 +240,7 @@
         processingSession: false,
         selectedLanguage: 'yue-Hant-HK',
         selectedSpeakerType: 'child',
+        selectedTeacherId: null,
       	session: {
       		sessionId: 0
       	},
@@ -303,6 +310,7 @@
     },
     created() {
       store.dispatch('fetchChildren')
+      store.dispatch('loadTeachers')
     },
     mounted() {
       console.log('Establishing socket connection with: ' + process.env.VUE_APP_API_URL);
@@ -395,7 +403,7 @@
       })
     },
     computed: {
-      ...mapState(['currentChild', 'speechSession'])
+      ...mapState(['currentChild', 'speechSession', 'teachers'])
     },
     filters: {
       formatDate(val) {
@@ -468,6 +476,7 @@
         waveformTensor.print();
       },
       processFile(speakerType) {
+        console.log('START with teacher:' + this.selectedTeacherId)
         if (speakerType) {
           this.audioFeatureProcessingFinishedMessage = false;
         }
@@ -501,7 +510,8 @@
                 else {
                   this.socket.emit('startProcessingFile', {...processingOptions, ...{
                     language: this.selectedLanguage,
-                    sessionId: this.speechSession.sessionId
+                    sessionId: this.speechSession.sessionId,
+                    classifierSpeakerIds: [Number(this.currentChild.id), Number(this.selectedTeacherId)]
                   }});
                   this.processingSession = true;
                 }
