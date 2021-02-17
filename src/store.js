@@ -256,6 +256,14 @@ const store = new Vuex.Store({
             return child
         })
     },
+    setChildFeatures(state, { childId, features }) {
+        state.children = state.children.map(child=>{
+            if ((child.id == childId)) {
+               child.features = features;
+            }  
+            return child
+        })
+    },
     setAnnotation(state, value) {
         state.speechSessions = state.speechSessions.map(session=>{
             if (session.sessionId == value.sessionId) {
@@ -321,6 +329,24 @@ const store = new Vuex.Store({
                                   })
                                 })
                               })
+    },
+    async deleteSpeakerFeature({state, commit},{ name }) {
+      await childrenCollection.where("id", "==", state.currentChild.id)
+                              .get()
+                              .then(docs => {
+                                docs.forEach(doc => {
+                                  const childFeaturesCollection = childrenCollection.doc(doc.id).collection('child_features');
+                                  childFeaturesCollection.where("name", "==", name)
+                                                         .get()
+                                                         .then(featureDocs=>{
+                                                            featureDocs.forEach(featureDoc=>featureDoc.ref.delete())
+
+                                                            commit('setChildFeatures', { childId: state.currentChild.id,
+                                                                                         features: state.currentChild.features.filter(feature=>{ return feature.name != name})})
+                    
+                                                         });
+                                })
+                              });
     },
     async pruneSpeechSessions({state, commit}, { limit }) {
       console.log('running prune')

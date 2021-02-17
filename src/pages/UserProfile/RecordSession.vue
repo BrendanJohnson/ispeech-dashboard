@@ -72,13 +72,13 @@
 
           <!-- Standard Upload modal -->
           <b-modal @ok="processFile(false)" id="upload-modal">
-            <b-form-file v-model="uploadFile"></b-form-file>
+            <b-form-file multiple v-model="uploadFiles"></b-form-file>
           </b-modal>
 
           <!-- Features Upload modal -->
           <b-modal @ok="processFile('child')" id="features-upload-modal">
             <p>Please select an audio file to upload. The audio file must only speech for the current child.</p>
-            <b-form-file v-model="uploadFile"></b-form-file>
+            <b-form-file multiple v-model="uploadFiles"></b-form-file>
           </b-modal>
       	</div>
       	<div id="annotations-table-container">
@@ -130,6 +130,14 @@
             <th scope="row">1</th>
             <td>{{ feature.name }}</td>
             <td>{{ feature.language }}</td>
+            <td>
+              <b-button-toolbar>
+                <b-button-group size="sm" class="mr-1">
+                  <b-button>Listen</b-button>
+                  <b-button @click="deleteFeature(feature)">Delete</b-button>
+                </b-button-group>
+              </b-button-toolbar>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -167,7 +175,7 @@
   </div>
 </template>
 <script>
-  import { BIcon, BButtonToolbar, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill, BProgress } from 'bootstrap-vue'
+  import { BIcon, BButtonToolbar, BButtonGroup, BIconFilePlus, BIconMic, BIconMicFill, BIconPauseFill, BIconStar, BIconStarFill, BProgress } from 'bootstrap-vue'
   import Card from 'src/components/Cards/Card.vue'
   import { mapState } from 'vuex'
   import moment from 'moment'
@@ -250,7 +258,7 @@
         speechRecognitionResults: [],
         speechRecognitionText: 'None',
         streamingAudio: false,
-        uploadFile: null,
+        uploadFiles: null,
         audioStream: null,
         annotationsFilter: '',
         recordingNewSession: false,
@@ -331,6 +339,7 @@
          this.processingFeatures = false;
          this.audioDistributedProcessing = false;
          this.audioFeatureProcessingFinishedMessage = true;
+         console.log('FINISHED PROCESSING FEATURE')
          console.log(result)
       })
 
@@ -391,16 +400,15 @@
         				speaker: "Unknown",
         				isActive: false,
         				starred: false });
-       
-      	
+        	
         speechRecognitionBlock++;
-      })
+      });
 
       this.socket.on('speechData', data => {
           // console.log(data.results[0].alternatives[0].transcript);
             var dataFinal = undefined || data.results[0].isFinal;
             speechRecognitionResults[speechRecognitionBlock] = data.results[0].alternatives[0].transcript;  
-      })
+      });
     },
     computed: {
       ...mapState(['currentChild', 'speechSession', 'teachers'])
@@ -416,6 +424,9 @@
     methods: {
       createSession() {
         store.dispatch('createSpeechSession', { content: "test" })
+      },
+      deleteFeature(feature) {
+        store.dispatch('deleteSpeakerFeature', feature)
       },
       showXml() {
           window.open(this.speechSession.manifestUrl, "_blank");
@@ -486,39 +497,49 @@
         
         const uploader = new SocketIOFileUpload(this.socket);
 
+        console.log(this.uploadFiles)
+
         uploader.addEventListener('complete', (data)=> {
-          store.dispatch(speakerType ? 'createSpeakerFeature': 'createSpeechSession', {
-            childId: this.currentChild.id,
-            language: this.selectedLanguage,
-            name: this.uploadFile.name
-          }).then((session)=> {
+          // Add a session or feature for each file
+          this.uploadFiles.forEach((uploadFile)=>{       
+            store.dispatch(speakerType ? 'createSpeakerFeature': 'createSpeechSession', {
+              childId: this.currentChild.id,
+              language: this.selectedLanguage,
+              name: uploadFile.name
+            }).then((session)=> {
 
-            const processingOptions = {
-                filename: this.uploadFile.name,
-                analysisMode: this.analysisMode
-            };
+              const processingOptions = {
+                  filename: uploadFile.name,
+                  analysisMode: this.analysisMode
+              };
 
-            this.$nextTick(() => {
-                if(speakerType) {
-                  this.socket.emit('startProcessingFeatureAudio', {...processingOptions, ...{
-                    analysisMode: 'custom',
-                    speakerId: this.currentChild.id,
-                    speakerType: speakerType
-                  }});
-                  this.processingFeatures = true;
-                }
-                else {
-                  this.socket.emit('startProcessingFile', {...processingOptions, ...{
-                    language: this.selectedLanguage,
-                    sessionId: this.speechSession.sessionId,
-                    classifierSpeakerIds: [Number(this.currentChild.id), Number(this.selectedTeacherId)]
-                  }});
-                  this.processingSession = true;
-                }
+              this.$nextTick(() => {
+                  if(speakerType) {
+                    this.socket.emit('startProcessingFeatureAudio', {...processingOptions, ...{
+                      analysisMode: 'custom',
+                      speakerId: this.currentChild.id,
+                      speakerType: speakerType
+                    }});
+                    this.processingFeatures = true;
+                  }
+                  else {
+                    this.socket.emit('startProcessingFile', {...processingOptions, ...{
+                      language: this.selectedLanguage,
+                      sessionId: this.speechSession.sessionId,
+                      classifierSpeakerIds: [Number(this.currentChild.id), Number(this.selectedTeacherId)]
+                    }});
+                    this.processingSession = true;
+                  }
+              })
             })
-          })
-        })
-        uploader.submitFiles([this.uploadFile])
+
+          });
+
+
+
+        });
+
+        uploader.submitFiles(this.uploadFiles);
       },
       recordNewSession() {
           this.recordingStartTime = Date.now();
@@ -619,7 +640,6 @@
               else {
                 x += barWidth; 
               }    
-
           };
       },
       toggleEdit(event, row, record) {
