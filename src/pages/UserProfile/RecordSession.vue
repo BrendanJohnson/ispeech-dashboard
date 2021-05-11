@@ -60,7 +60,12 @@
                 </b-icon-mic-fill>
                 Start Recording
               </button>
-              <button :disabled="!selectedTeacherId" class="btn btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
+
+              <button v-if="analysisMode == 'split'" :disabled="!selectedTeacherId" class="btn btn-primary"
+              v-b-modal="'upload-files-modal'">
+              Upload Audio
+              </button>
+              <button v-else :disabled="!selectedTeacherId" class="btn btn-primary" v-b-modal="'upload-modal'">Upload Audio</button>
             </div>
           </div>
           
@@ -73,6 +78,18 @@
           <!-- Standard Upload modal -->
           <b-modal @ok="processFile(false)" id="upload-modal">
             <b-form-file multiple v-model="uploadFiles"></b-form-file>
+
+
+          </b-modal>
+          <b-modal @ok="processSplitFiles" id="upload-files-modal">
+            <div>
+              <b-form-group label="Teacher Audio:" label-cols-sm="2" label-size="sm">
+                <b-form-file id="file-small" size="sm" v-model="uploadFileAdult"></b-form-file>
+              </b-form-group>
+              <b-form-group label="Child Audio:" label-cols-sm="2" label-size="sm">
+                <b-form-file id="file-small" size="sm" v-model="uploadFileChild"></b-form-file>
+              </b-form-group>
+            </div>
           </b-modal>
 
           <!-- Features Upload modal -->
@@ -259,6 +276,8 @@
         speechRecognitionText: 'None',
         streamingAudio: false,
         uploadFiles: null,
+        uploadFileAdult: null,
+        uploadFileChild: null,
         audioStream: null,
         annotationsFilter: '',
         recordingNewSession: false,
@@ -540,6 +559,46 @@
         });
 
         uploader.submitFiles(this.uploadFiles);
+      },
+      processSplitFiles() {
+        this.audioProcessingFinishedMessage = false;    
+        const uploader = new SocketIOFileUpload(this.socket);
+
+        console.log('Files to upload')
+        console.log(this.uploadFileAdult)
+        console.log(this.uploadFileChild)
+
+        let filesToUpload = 2;
+
+        uploader.addEventListener('complete', (data)=> {
+          // Add a session
+          filesToUpload--;
+
+          if (!filesToUpload) {
+            store.dispatch('createSpeechSession', {
+              childId: this.currentChild.id,
+              language: this.selectedLanguage,
+              name: this.uploadFileChild.name // Just use the child's name
+            }).then((session)=> {
+
+              this.$nextTick(() => {
+                    this.socket.emit('startProcessingFiles', {
+                      language: this.selectedLanguage,
+                      sessionId: this.speechSession.sessionId,
+                      adultFilename: this.uploadFileAdult.name,
+                      childFilename: this.uploadFileChild.name
+                    });
+                    this.processingSession = true;
+              })
+            })
+          }
+        });
+
+
+
+        uploader.submitFiles([this.uploadFileAdult, this.uploadFileChild]);
+
+
       },
       recordNewSession() {
           this.recordingStartTime = Date.now();
