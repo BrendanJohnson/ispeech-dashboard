@@ -31,7 +31,7 @@ The repo uses [vue-cli](https://github.com/vuejs/vue-cli) scaffolding which take
 
 ### Processing Audio 
 To process audio click on the "New Session" button:
-![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/docs/new_session.jpg?raw=true)
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/new_session.jpg?raw=true)
 
 ## :cloud: Cloud configuration
 
