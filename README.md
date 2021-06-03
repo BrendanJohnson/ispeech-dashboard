@@ -55,7 +55,7 @@ To generate an NLP analysis chart of the text in the transcript, click on the "?
 
 #### NLP
 After clicking the "?" button, the NLP analysis chart will be displayed under the transcript line:
-![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/transcript_line.jpg?raw=true)
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/NLP.jpg?raw=true)
 
 In the NLP chart the relationship between the parts of speech are connected, with the word type (Noun, Verb, Pronoun etc.) displayed underneath. To the left of the NLP chart is an emoticon displaying the overrall emotion of the utterance, for example:
 
