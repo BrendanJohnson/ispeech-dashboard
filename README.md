@@ -61,11 +61,11 @@ In the NLP chart the relationship between the parts of speech are connected, wit
 
 | Emoticon | Sentiment |
 | -------- | --------- |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-laughing.jpg) | Very Positive |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-smile.jpg) | Positive      |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-neutral.jpg) | Neutral       |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-frown.jpg) | Negative       |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-dizzy.jpg) | Very Negative       |
+| <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-laughing.jpg" alt="Laughing Emoticon" align="center" width="25"> | Very Positive |
+| <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-smile.jpg" alt="Smile Emoticon" align="center" width="25"> | Positive      |
+| <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-neutral.jpg" alt="Neutral Emoticon" align="center" width="25"> | Neutral       |
+| <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-frown.jpg" alt="Frown Emoticon" align="center" width="25"> | Negative       |
+| <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-dizzy.jpg" alt="Dizzy Emoticon" align="center" width="25"> | Very Negative       |
 
 
 ## :cloud: Cloud configuration
