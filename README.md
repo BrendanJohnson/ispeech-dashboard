@@ -67,6 +67,29 @@ In the NLP chart the relationship between the parts of speech are connected, wit
 | <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-frown.jpg" alt="Frown Emoticon" align="center" width="25"> | Negative       |
 | <img src="https://github.com/iSpeechAPAC/ispeech-dashboard/raw/master/emoji-dizzy.jpg" alt="Dizzy Emoticon" align="center" width="25"> | Very Negative       |
 
+### Statistics
+To view overall statistics for the child, click on the "Dashboard" item in the main menu:
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/dashboard_overview.jpg?raw=true)
+
+On the Dashboard, you can see the overall statistics for the selected child, such as the number of Sessions taken, the total amount of minutes of child speech detected accross all sessions and the number of words detected. On the right side of the screen recommendations for the child are shown based on their current progress.
+
+#### Number of utterances
+The No. of Utterances panel displays the evolution of utterances made by the child and adult over time:
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/dashboard_utterances.jpg?raw=true)
+
+Generally a low number of child utterances during the session indicates a low amount of engagement in the session, although this may depend on session type.
+
+#### Child/Adult ratio
+The Child/Adult ratio panel shows the amount of child speech over time accross sessions:
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/dashboard_adult_child.jpg?raw=true)
+
+This is another indicator of the child's engagement in the session, however the metric may be more accurate than the number of utterances in the case where the long utterances are expected (for example, during storytelling sessions)
+
+#### Language Spoken
+The Language Spoken panel displays the composition of languages spoken during sessions, based on the amount of minutes spoken in each language over all sessions: 
+![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/dashboard_adult_child.jpg?raw=true)
+
+Currently only Cantonese, Mandarin and English are supported.
 
 ## :cloud: Cloud configuration
 
