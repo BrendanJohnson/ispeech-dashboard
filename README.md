@@ -59,9 +59,13 @@ After clicking the "?" button, the NLP analysis chart will be displayed under th
 
 In the NLP chart the relationship between the parts of speech are connected, with the word type (Noun, Verb, Pronoun etc.) displayed underneath. To the left of the NLP chart is an emoticon displaying the overrall emotion of the utterance, for example:
 
-| emoticon | state |
-| -------- | ----- |
-| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/neutral.svg) | Neutral |
+| Emoticon | Sentiment |
+| -------- | --------- |
+| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-laughing.jpg) | Very Positive |
+| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-smile.jpg) | Positive      |
+| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-neutral.jpg) | Neutral       |
+| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-frown.jpg) | Negative       |
+| ![alt text](https://github.com//iSpeechAPAC/ispeech-dashboard/blob/master/emoji-dizzy.jpg) | Very Negative       |
 
 
 ## :cloud: Cloud configuration
